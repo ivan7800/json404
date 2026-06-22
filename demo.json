@@ -1,0 +1,31 @@
+{
+  "project": "JSON Studio Pro 404",
+  "version": "2.0.0-final",
+  "type": "offline-json-auditor",
+  "privacy": {
+    "localOnly": true,
+    "backend": false,
+    "externalLibraries": false
+  },
+  "api": {
+    "endpoint": "https://api.example.com/v1/items",
+    "token": "sk-demo-1234567890abcdef1234567890abcdef"
+  },
+  "contacts": [
+    {
+      "name": "Ada",
+      "email": "ada@example.com",
+      "role": "admin"
+    },
+    {
+      "name": "Linus",
+      "email": "linus@example.com",
+      "role": "editor"
+    }
+  ],
+  "exports": [
+    { "format": "csv", "enabled": true },
+    { "format": "markdown", "enabled": true },
+    { "format": "schema", "enabled": true }
+  ]
+}

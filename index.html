@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="midnight">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="JSON Studio Pro 404: lector, interpretador local, auditor y conversor de archivos JSON para GitHub Pages." />
+  <title>JSON Studio Pro 404</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080b13;
+      --bg-2: #10182a;
+      --panel: rgba(17, 24, 39, 0.84);
+      --panel-solid: #111827;
+      --panel-2: rgba(30, 41, 59, 0.82);
+      --text: #eef4ff;
+      --muted: #9fb1c8;
+      --line: rgba(148, 163, 184, 0.22);
+      --accent: #7dd3fc;
+      --accent-2: #c084fc;
+      --accent-3: #34d399;
+      --danger: #fb7185;
+      --warn: #fbbf24;
+      --ok: #34d399;
+      --shadow: 0 24px 90px rgba(0,0,0,.45);
+      --radius: 24px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    html[data-theme="aurora"] {
+      --bg: #071617;
+      --bg-2: #102327;
+      --panel: rgba(9, 32, 34, 0.86);
+      --panel-solid: #0c2628;
+      --panel-2: rgba(20, 83, 80, 0.42);
+      --accent: #5eead4;
+      --accent-2: #a7f3d0;
+      --accent-3: #facc15;
+      --text: #effffb;
+      --muted: #a7c7c4;
+    }
+
+    html[data-theme="terminal"] {
+      --bg: #030603;
+      --bg-2: #061006;
+      --panel: rgba(4, 16, 8, 0.92);
+      --panel-solid: #061006;
+      --panel-2: rgba(22, 101, 52, 0.22);
+      --accent: #22c55e;
+      --accent-2: #86efac;
+      --accent-3: #bbf7d0;
+      --text: #ddffe6;
+      --muted: #85b693;
+      --line: rgba(34,197,94,.24);
+    }
+
+    html[data-theme="paper"] {
+      color-scheme: light;
+      --bg: #f6efe5;
+      --bg-2: #fff9ef;
+      --panel: rgba(255, 251, 235, 0.88);
+      --panel-solid: #fff7ed;
+      --panel-2: rgba(254, 243, 199, 0.7);
+      --text: #231f20;
+      --muted: #71665d;
+      --line: rgba(120, 113, 108, .26);
+      --accent: #b45309;
+      --accent-2: #7c2d12;
+      --accent-3: #047857;
+      --danger: #be123c;
+      --warn: #a16207;
+      --ok: #047857;
+      --shadow: 0 24px 90px rgba(91, 67, 35, .16);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 24%, transparent), transparent 34rem),
+        radial-gradient(circle at top right, color-mix(in oklab, var(--accent-2) 24%, transparent), transparent 30rem),
+        linear-gradient(145deg, var(--bg), var(--bg-2));
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.62), transparent 88%);
+    }
+
+    a { color: inherit; }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+
+    .app-shell {
+      width: min(1480px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 28px 0 44px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 20px;
+      color: #08111f;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 16px 44px color-mix(in oklab, var(--accent) 24%, transparent);
+    }
+
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(28px, 4vw, 54px); letter-spacing: -0.055em; line-height: 0.95; }
+    .subtitle { color: var(--muted); margin-top: 8px; max-width: 850px; font-size: clamp(15px, 1.8vw, 18px); }
+
+    .actions, .row, .tabs, .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .actions { justify-content: flex-end; }
+
+    .btn, .chip, .select-wrap select, .file-label {
+      border: 1px solid var(--line);
+      background: color-mix(in oklab, var(--panel-solid) 84%, transparent);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      min-height: 42px;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .btn:hover, .file-label:hover { transform: translateY(-1px); border-color: color-mix(in oklab, var(--accent) 55%, var(--line)); }
+    .btn.primary, .file-label.primary {
+      color: #07111f;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      font-weight: 800;
+    }
+    .btn.danger { border-color: color-mix(in oklab, var(--danger) 55%, var(--line)); color: var(--danger); }
+    .btn.small { min-height: 34px; padding: 7px 11px; font-size: 13px; }
+    .btn.ghost { background: transparent; }
+    .chip { color: var(--muted); font-size: 13px; padding: 8px 12px; min-height: 34px; }
+    .chip strong { color: var(--text); }
+    .chip.ok { color: var(--ok); border-color: color-mix(in oklab, var(--ok) 40%, var(--line)); }
+    .chip.warn { color: var(--warn); border-color: color-mix(in oklab, var(--warn) 45%, var(--line)); }
+    .chip.danger { color: var(--danger); border-color: color-mix(in oklab, var(--danger) 50%, var(--line)); }
+
+    .grid { display: grid; grid-template-columns: 430px 1fr; gap: 18px; align-items: start; }
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card.pad { padding: 18px; }
+    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin-bottom: 12px; font-weight: 900; }
+
+    .dropzone {
+      position: relative;
+      border: 1.5px dashed color-mix(in oklab, var(--accent) 45%, var(--line));
+      border-radius: 22px;
+      min-height: 208px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 24px;
+      background: linear-gradient(160deg, color-mix(in oklab, var(--accent) 9%, transparent), transparent 72%);
+    }
+    .dropzone.dragging { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, transparent); }
+    .dropzone .big { font-size: 44px; margin-bottom: 10px; }
+    .dropzone p { color: var(--muted); line-height: 1.5; }
+    .hidden-input { display:none; }
+
+    textarea, input[type="text"], input[type="search"] {
+      width: 100%;
+      background: color-mix(in oklab, var(--panel-solid) 82%, transparent);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 13px 14px;
+      outline: none;
+      min-height: 44px;
+    }
+    textarea:focus, input:focus { border-color: color-mix(in oklab, var(--accent) 70%, var(--line)); }
+    textarea { min-height: 180px; resize: vertical; font-family: var(--mono); font-size: 13px; line-height: 1.55; }
+
+    .status-panel {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 13px;
+      background: color-mix(in oklab, var(--panel-solid) 60%, transparent);
+    }
+    .metric .value { font-size: 22px; font-weight: 900; letter-spacing: -.03em; }
+    .metric .label { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    .main-card { min-height: 710px; display: flex; flex-direction: column; }
+    .main-head { padding: 16px; border-bottom: 1px solid var(--line); display: grid; gap: 13px; }
+    .tabs { gap: 8px; }
+    .tab {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 9px 13px;
+      min-height: 38px;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .tab.active { color: #07111f; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; }
+    .main-body { padding: 16px; flex: 1; min-height: 0; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .empty {
+      min-height: 510px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border: 1px dashed var(--line);
+      border-radius: 22px;
+      color: var(--muted);
+      padding: 24px;
+    }
+    .empty strong { color: var(--text); display: block; margin-bottom: 8px; font-size: 20px; }
+
+    pre.codebox {
+      margin: 0;
+      max-height: 640px;
+      overflow: auto;
+      background: color-mix(in oklab, #020617 84%, var(--panel-solid));
+      color: #e5edf9;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    html[data-theme="paper"] pre.codebox { background: #1f2937; color: #f8fafc; }
+
+    .tree { font-family: var(--mono); font-size: 13px; line-height: 1.7; max-height: 640px; overflow:auto; padding: 6px; }
+    .tree details { margin-left: 16px; border-left: 1px solid color-mix(in oklab, var(--line) 75%, transparent); padding-left: 10px; }
+    .tree summary { cursor: pointer; color: var(--accent); user-select: none; }
+    .key { color: var(--accent); }
+    .string { color: var(--accent-3); }
+    .number { color: #facc15; }
+    .boolean { color: #f472b6; }
+    .null { color: var(--muted); }
+    .path-pill { color: var(--muted); font-size: 11px; margin-left: 6px; }
+
+    .analysis-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 14px; }
+    .insight {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px;
+      background: color-mix(in oklab, var(--panel-solid) 58%, transparent);
+      margin-bottom: 12px;
+    }
+    .insight h3 { font-size: 16px; margin-bottom: 8px; }
+    .insight p, .insight li { color: var(--muted); line-height: 1.55; }
+    .insight ul { margin: 8px 0 0; padding-left: 18px; }
+    .score {
+      display: inline-grid;
+      place-items: center;
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      font-weight: 950;
+      color: #07111f;
+      background: linear-gradient(135deg, var(--accent-3), var(--accent));
+      margin-right: 10px;
+    }
+
+    .table-wrap { overflow:auto; max-height: 640px; border: 1px solid var(--line); border-radius: 18px; }
+    table { border-collapse: collapse; width: 100%; min-width: 720px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 10px; text-align: left; vertical-align: top; font-size: 13px; }
+    th { position: sticky; top: 0; background: var(--panel-solid); z-index: 1; color: var(--accent); }
+    td { color: var(--muted); font-family: var(--mono); }
+
+    .audit-list { display: grid; gap: 10px; }
+    .finding {
+      display: grid;
+      grid-template-columns: 110px 1fr auto;
+      gap: 10px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 12px;
+      background: color-mix(in oklab, var(--panel-solid) 58%, transparent);
+    }
+    .sev { font-weight: 900; text-transform: uppercase; font-size: 12px; letter-spacing: .08em; }
+    .sev.high { color: var(--danger); }
+    .sev.medium { color: var(--warn); }
+    .sev.low { color: var(--accent); }
+    .finding code { color: var(--text); font-family: var(--mono); word-break: break-word; }
+    .finding p { color: var(--muted); line-height: 1.45; margin-top: 4px; }
+
+    .convert-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+    .convert-card { border: 1px solid var(--line); border-radius: 20px; padding: 15px; background: color-mix(in oklab, var(--panel-solid) 60%, transparent); }
+    .convert-card h3 { margin-bottom: 8px; }
+    .convert-card p { color: var(--muted); min-height: 44px; line-height: 1.45; }
+
+
+
+    .template-grid, .report-grid, .path-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .template-card, .report-card, .path-card {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 15px;
+      background: color-mix(in oklab, var(--panel-solid) 60%, transparent);
+    }
+    .template-card h3, .report-card h3, .path-card h3 { margin-bottom: 7px; }
+    .template-card p, .report-card p, .path-card p { color: var(--muted); line-height: 1.45; margin-bottom: 10px; }
+    .badge-row { display:flex; gap: 7px; flex-wrap:wrap; margin: 8px 0 12px; }
+    .mini-badge { border:1px solid var(--line); border-radius:999px; padding:5px 8px; color:var(--muted); font-size:12px; }
+    .schema-box { margin-top: 12px; }
+    .checkline { display:flex; gap:8px; align-items:center; color:var(--muted); margin: 8px 0; }
+    .checkline input { width:auto; min-height:auto; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%) translateY(130%);
+      background: var(--panel-solid);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 12px 16px;
+      box-shadow: var(--shadow);
+      z-index: 99;
+      transition: transform .22s ease;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    .footer {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+    .footer strong { color: var(--text); }
+
+    .error-box {
+      border: 1px solid color-mix(in oklab, var(--danger) 55%, var(--line));
+      background: color-mix(in oklab, var(--danger) 12%, transparent);
+      color: var(--text);
+      border-radius: 18px;
+      padding: 14px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1040px) {
+      .grid, .analysis-grid { grid-template-columns: 1fr; }
+      .main-card { min-height: auto; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .actions { justify-content: flex-start; }
+    }
+
+    @media (max-width: 640px) {
+      .app-shell { width: min(100% - 18px, 1480px); padding-top: 12px; }
+      .brand { align-items: flex-start; }
+      .logo { width: 46px; height: 46px; border-radius: 15px; }
+      .card.pad, .main-head, .main-body { padding: 12px; }
+      .status-panel, .convert-grid, .template-grid, .report-grid, .path-grid { grid-template-columns: 1fr; }
+      .finding { grid-template-columns: 1fr; }
+      .btn, .file-label, .select-wrap select { width: 100%; justify-content: center; text-align: center; }
+      .tabs { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .tab { width: 100%; padding-inline: 8px; }
+      pre.codebox, .tree, .table-wrap { max-height: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">{ }</div>
+        <div>
+          <h1>JSON Studio Pro 404</h1>
+          <p class="subtitle">Abre, entiende, audita, limpia y convierte archivos JSON sin subirlos a internet. Todo funciona en tu navegador.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <select id="themeSelect" class="btn" aria-label="Cambiar skin">
+          <option value="midnight">Skin Midnight</option>
+          <option value="aurora">Skin Aurora</option>
+          <option value="terminal">Skin Terminal</option>
+          <option value="paper">Skin Paper</option>
+        </select>
+        <button class="btn ghost" id="loadDemoBtn">Cargar demo</button>
+        <button class="btn danger" id="resetBtn">Limpiar</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <aside class="card pad">
+        <div class="section-title">Entrada</div>
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Arrastra un archivo JSON o pulsa para cargarlo">
+          <div>
+            <div class="big">⬇</div>
+            <h2>Arrastra tu .json</h2>
+            <p>También puedes pulsar aquí, pegar JSON manualmente o usar la demo.</p>
+            <div class="row" style="justify-content:center;margin-top:14px;">
+              <label for="fileInput" class="file-label primary">Elegir archivo</label>
+              <input id="fileInput" class="hidden-input" type="file" accept=".json,application/json,text/json" />
+            </div>
+          </div>
+        </div>
+
+        <div style="height:14px"></div>
+        <textarea id="jsonInput" placeholder='Pega aquí tu JSON. Ejemplo: {"nombre":"demo","activo":true}' spellcheck="false"></textarea>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn primary" id="analyzeBtn">Analizar JSON</button>
+          <button class="btn" id="formatBtn">Formatear</button>
+          <button class="btn" id="minifyBtn">Minificar</button>
+          <button class="btn" id="repairBtn">Reparar básico</button>
+          <button class="btn" id="sortKeysBtn">Ordenar claves</button>
+        </div>
+
+        <div id="parseStatus" style="margin-top:14px"></div>
+
+        <div class="status-panel" id="quickMetrics">
+          <div class="metric"><div class="value">—</div><div class="label">Tamaño</div></div>
+          <div class="metric"><div class="value">—</div><div class="label">Claves</div></div>
+          <div class="metric"><div class="value">—</div><div class="label">Objetos</div></div>
+          <div class="metric"><div class="value">—</div><div class="label">Riesgos</div></div>
+        </div>
+      </aside>
+
+      <section class="card main-card">
+        <div class="main-head">
+          <div class="toolbar">
+            <input id="searchInput" type="search" placeholder="Buscar clave, valor o ruta…" aria-label="Buscar dentro del JSON" />
+            <button class="btn" id="copyPrettyBtn">Copiar bonito</button>
+            <button class="btn" id="downloadCleanBtn">Descargar limpio</button>
+          </div>
+          <nav class="tabs" aria-label="Vistas">
+            <button class="tab active" data-tab="resumen">Resumen</button>
+            <button class="tab" data-tab="arbol">Árbol</button>
+            <button class="tab" data-tab="codigo">Código</button>
+            <button class="tab" data-tab="tabla">Tabla</button>
+            <button class="tab" data-tab="auditoria">Auditoría</button>
+            <button class="tab" data-tab="convertir">Convertir</button>
+            <button class="tab" data-tab="plantillas">Plantillas</button>
+            <button class="tab" data-tab="comparar">Comparar</button>
+          </nav>
+        </div>
+        <div class="main-body">
+          <div id="emptyState" class="empty">
+            <div>
+              <strong>Esperando un JSON</strong>
+              Carga un archivo o pega contenido para ver interpretación local, estadísticas, auditoría y conversiones.
+            </div>
+          </div>
+
+          <section id="panel-resumen" class="panel active"></section>
+          <section id="panel-arbol" class="panel"></section>
+          <section id="panel-codigo" class="panel"></section>
+          <section id="panel-tabla" class="panel"></section>
+          <section id="panel-auditoria" class="panel"></section>
+          <section id="panel-convertir" class="panel"></section>
+          <section id="panel-plantillas" class="panel"></section>
+          <section id="panel-comparar" class="panel"></section>
+        </div>
+      </section>
+    </section>
+
+    <p class="footer"><strong>Privacidad:</strong> esta app no tiene backend, no envía archivos y no usa librerías externas. Ideal para GitHub Pages.</p>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const state = {
+      raw: '',
+      data: null,
+      fileName: 'json-studio-pro-404.json',
+      stats: null,
+      audit: [],
+      duplicates: [],
+      interpretation: null,
+      tableData: null,
+      search: ''
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const panels = ['resumen', 'arbol', 'codigo', 'tabla', 'auditoria', 'convertir', 'plantillas', 'comparar'];
+
+    const demo = JSON.stringify({
+      project: 'JSON Studio Pro 404',
+      type: 'app-config',
+      version: '1.0.0',
+      author: 'I. Roig',
+      api: {
+        endpoint: 'https://api.example.com/v1/items',
+        token: 'sk-demo-1234567890abcdef1234567890abcdef',
+        session: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.demo.signature'
+      },
+      settings: {
+        theme: 'midnight',
+        autosave: true,
+        emptyField: '',
+        nullField: null
+      },
+      users: [
+        { id: 1, name: 'Ada', email: 'ada@example.com', role: 'admin' },
+        { id: 2, name: 'Linus', email: 'linus@example.com', role: 'editor' }
+      ],
+      exports: [
+        { format: 'csv', enabled: true },
+        { format: 'markdown', enabled: true },
+        { format: 'yaml', enabled: true }
+      ]
+    }, null, 2);
+
+    const jsonTemplates = [
+      {
+        name: 'package.json profesional',
+        category: 'Node / GitHub',
+        tags: ['npm', 'scripts', 'proyecto'],
+        description: 'Base limpia para proyectos JavaScript publicados en GitHub.',
+        data: {
+          name: 'mi-proyecto',
+          version: '1.0.0',
+          description: 'Descripción breve del proyecto.',
+          type: 'module',
+          scripts: { start: 'node index.js', test: 'node --test' },
+          keywords: ['github-pages', 'json', 'tool'],
+          author: 'I. Roig',
+          license: 'MIT',
+          dependencies: {},
+          devDependencies: {}
+        }
+      },
+      {
+        name: 'GitHub Actions Pages',
+        category: 'Deploy',
+        tags: ['CI', 'Pages', 'workflow'],
+        description: 'Estructura JSON equivalente para documentar un workflow de despliegue.',
+        data: {
+          name: 'Deploy static site',
+          on: { push: { branches: ['main'] }, workflow_dispatch: {} },
+          permissions: { contents: 'read', pages: 'write', id_token: 'write' },
+          jobs: { deploy: { runs_on: 'ubuntu-latest', steps: ['checkout', 'upload-pages-artifact', 'deploy-pages'] } }
+        }
+      },
+      {
+        name: 'Respuesta de API',
+        category: 'API',
+        tags: ['data', 'meta', 'pagination'],
+        description: 'Plantilla para probar vista tabla, estadísticas y exportación CSV.',
+        data: {
+          status: 'ok',
+          meta: { page: 1, per_page: 2, total: 2 },
+          data: [
+            { id: 1, title: 'Elemento A', price: 19.9, active: true },
+            { id: 2, title: 'Elemento B', price: 29.9, active: false }
+          ]
+        }
+      },
+      {
+        name: 'Catálogo de productos',
+        category: 'Datos',
+        tags: ['CSV', 'tabla', 'tienda'],
+        description: 'Útil para convertir JSON a CSV, Markdown o tabla visual.',
+        data: {
+          catalog: [
+            { sku: 'BK-001', title: 'Libro de muestra', category: 'Books', stock: 12, price: 12.95 },
+            { sku: 'APP-404', title: 'App digital', category: 'Software', stock: 999, price: 0 }
+          ],
+          currency: 'EUR'
+        }
+      },
+      {
+        name: 'Configuración de app',
+        category: 'Config',
+        tags: ['settings', 'theme', 'features'],
+        description: 'Modelo seguro para apps estáticas con preferencias y módulos.',
+        data: {
+          app: { name: 'Mi App', version: '1.0.0', offline: true },
+          ui: { theme: 'dark', language: 'es', animations: true },
+          features: { export: true, history: true, cloudSync: false },
+          privacy: { telemetry: false, localOnly: true }
+        }
+      },
+      {
+        name: 'Archivo i18n',
+        category: 'Traducciones',
+        tags: ['idiomas', 'textos', 'UI'],
+        description: 'Plantilla para traducciones de interfaz en varios idiomas.',
+        data: {
+          es: { title: 'Bienvenido', save: 'Guardar', cancel: 'Cancelar' },
+          en: { title: 'Welcome', save: 'Save', cancel: 'Cancel' },
+          ca: { title: 'Benvingut', save: 'Desar', cancel: 'Cancel·lar' }
+        }
+      },
+      {
+        name: 'Datos de videojuego',
+        category: 'Gaming',
+        tags: ['savegame', 'inventory', 'quest'],
+        description: 'Para probar detección de inventario, misiones y estructura de juego.',
+        data: {
+          player: { name: 'Investigador', level: 7, health: 82 },
+          inventory: [{ item: 'linterna', qty: 1 }, { item: 'llave antigua', qty: 1 }],
+          quests: [{ id: 'q-404', title: 'La puerta imposible', completed: false }]
+        }
+      },
+      {
+        name: 'Backup con datos sensibles',
+        category: 'Auditoría',
+        tags: ['seguridad', 'tokens', 'privacidad'],
+        description: 'Ejemplo para probar detección y limpieza de secretos antes de publicar.',
+        data: {
+          user: { name: 'Demo', email: 'demo@example.com', phone: '+34 600 000 000' },
+          credentials: { apiKey: 'sk-demo-abcdefghijklmnopqrstuvwxyz123456', password: 'no-publicar' },
+          url: 'https://example.com/private/export'
+        }
+      }
+    ];
+
+    function showToast(message) {
+      const toast = $('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return '—';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let size = bytes;
+      let unit = 0;
+      while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit++; }
+      return `${size.toFixed(size >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
+    }
+
+    function getLineColumn(raw, position) {
+      const before = raw.slice(0, position);
+      const lines = before.split(/\r?\n/);
+      return { line: lines.length, column: lines[lines.length - 1].length + 1 };
+    }
+
+    function explainJsonError(raw, error) {
+      const msg = error && error.message ? error.message : 'Error desconocido';
+      const match = msg.match(/position\s+(\d+)/i);
+      let location = '';
+      if (match) {
+        const pos = Number(match[1]);
+        const loc = getLineColumn(raw, pos);
+        location = ` Línea ${loc.line}, columna ${loc.column}.`;
+      }
+      const lower = msg.toLowerCase();
+      let advice = 'Revisa comillas, llaves, corchetes y comas.';
+      if (lower.includes('unexpected token')) advice = 'Suele indicar una coma extra, una coma faltante o comillas mal usadas.';
+      if (lower.includes('unterminated')) advice = 'Parece haber una cadena de texto sin cerrar.';
+      if (lower.includes('unexpected end')) advice = 'Parece faltar una llave o corchete de cierre al final.';
+      return `${msg}.${location} ${advice}`;
+    }
+
+    function analyze() {
+      const raw = $('jsonInput').value.trim();
+      state.raw = raw;
+      state.fileName = state.fileName || 'json-studio-pro-404.json';
+
+      if (!raw) {
+        setError('No hay JSON para analizar. Pega contenido o carga un archivo.');
+        return;
+      }
+
+      try {
+        state.data = JSON.parse(raw);
+        state.raw = raw;
+        state.stats = collectStats(state.data, raw);
+        state.duplicates = scanDuplicateKeys(raw);
+        state.audit = auditJson(state.data);
+        state.interpretation = interpretJson(state.data, state.stats, state.audit);
+        state.tableData = findTableData(state.data);
+        renderAll();
+        $('emptyState').style.display = 'none';
+        $('parseStatus').innerHTML = `<div class="chip ok">JSON válido · ${escapeHtml(state.interpretation.type)}</div>`;
+        showToast('JSON analizado correctamente');
+      } catch (err) {
+        setError(explainJsonError(raw, err));
+      }
+    }
+
+    function setError(message) {
+      $('parseStatus').innerHTML = `<div class="error-box"><strong>JSON no válido.</strong><br>${escapeHtml(message)}</div>`;
+      $('emptyState').style.display = 'grid';
+      clearPanels();
+      renderQuickMetrics(null);
+    }
+
+    function clearPanels() {
+      panels.forEach(p => { const el = $(`panel-${p}`); if (el) el.innerHTML = ''; });
+    }
+
+    function collectStats(value, raw) {
+      const stats = {
+        bytes: new Blob([raw]).size,
+        keys: 0,
+        objects: 0,
+        arrays: 0,
+        strings: 0,
+        numbers: 0,
+        booleans: 0,
+        nulls: 0,
+        emptyStrings: 0,
+        emptyArrays: 0,
+        emptyObjects: 0,
+        maxDepth: 0,
+        leafValues: 0,
+        topType: Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value
+      };
+
+      function walk(node, depth) {
+        stats.maxDepth = Math.max(stats.maxDepth, depth);
+        if (Array.isArray(node)) {
+          stats.arrays++;
+          if (!node.length) stats.emptyArrays++;
+          node.forEach(item => walk(item, depth + 1));
+        } else if (node && typeof node === 'object') {
+          stats.objects++;
+          const keys = Object.keys(node);
+          stats.keys += keys.length;
+          if (!keys.length) stats.emptyObjects++;
+          keys.forEach(key => walk(node[key], depth + 1));
+        } else {
+          stats.leafValues++;
+          if (node === null) stats.nulls++;
+          else if (typeof node === 'string') {
+            stats.strings++;
+            if (node.trim() === '') stats.emptyStrings++;
+          } else if (typeof node === 'number') stats.numbers++;
+          else if (typeof node === 'boolean') stats.booleans++;
+        }
+      }
+      walk(value, 0);
+      return stats;
+    }
+
+    function scanDuplicateKeys(raw) {
+      const duplicates = [];
+      const stack = [];
+      let inString = false;
+      let escape = false;
+      let start = 0;
+      let objectCounter = 0;
+
+      for (let i = 0; i < raw.length; i++) {
+        const ch = raw[i];
+        if (inString) {
+          if (escape) { escape = false; continue; }
+          if (ch === '\\') { escape = true; continue; }
+          if (ch === '"') {
+            inString = false;
+            const literal = raw.slice(start, i + 1);
+            let key;
+            try { key = JSON.parse(literal); } catch { key = null; }
+            let j = i + 1;
+            while (/\s/.test(raw[j] || '')) j++;
+            if (raw[j] === ':' && stack.length && stack[stack.length - 1].type === 'object' && typeof key === 'string') {
+              const ctx = stack[stack.length - 1];
+              if (ctx.keys.has(key)) {
+                const loc = getLineColumn(raw, start);
+                duplicates.push({ key, object: ctx.id, line: loc.line, column: loc.column });
+              }
+              ctx.keys.add(key);
+            }
+          }
+          continue;
+        }
+        if (ch === '"') { inString = true; start = i; continue; }
+        if (ch === '{') stack.push({ type: 'object', keys: new Set(), id: ++objectCounter });
+        else if (ch === '[') stack.push({ type: 'array' });
+        else if (ch === '}' || ch === ']') stack.pop();
+      }
+      return duplicates.slice(0, 100);
+    }
+
+    const sensitiveKeyPatterns = [
+      /password|passwd|pwd/i,
+      /api[_-]?key|apikey|secret|token|access[_-]?token|refresh[_-]?token/i,
+      /bearer|authorization|auth/i,
+      /session|cookie|csrf|private[_-]?key/i,
+      /client[_-]?secret|firebase|connectionstring/i
+    ];
+
+    const valuePatterns = [
+      { type: 'Email', severity: 'low', regex: /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/ig, detail: 'Dato personal o contacto.' },
+      { type: 'URL', severity: 'low', regex: /https?:\/\/[^\s"'<>]+/ig, detail: 'Enlace externo detectado.' },
+      { type: 'Teléfono', severity: 'medium', regex: /(?:\+\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]+)?\d{3}[\s.-]+\d{3,4}/g, detail: 'Posible teléfono o identificador de contacto.' },
+      { type: 'JWT', severity: 'high', regex: /eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{5,}/g, detail: 'Token JWT o sesión exportada.' },
+      { type: 'OpenAI/API Key', severity: 'high', regex: /sk-[a-zA-Z0-9_-]{20,}/g, detail: 'Posible API key.' },
+      { type: 'AWS Access Key', severity: 'high', regex: /AKIA[0-9A-Z]{16}/g, detail: 'Posible clave de acceso AWS.' },
+      { type: 'Google API Key', severity: 'high', regex: /AIza[0-9A-Za-z\-_]{35}/g, detail: 'Posible Google API key.' },
+      { type: 'GitHub Token', severity: 'high', regex: /gh[pousr]_[A-Za-z0-9_]{20,}/g, detail: 'Posible token de GitHub.' },
+      { type: 'Slack Token', severity: 'high', regex: /xox[baprs]-[A-Za-z0-9-]{10,}/g, detail: 'Posible token de Slack.' },
+      { type: 'Stripe Key', severity: 'high', regex: /(sk|pk)_(live|test)_[A-Za-z0-9]{20,}/g, detail: 'Posible clave de Stripe.' },
+      { type: 'Private Key', severity: 'high', regex: /-----BEGIN [A-Z ]*PRIVATE KEY-----/g, detail: 'Clave privada incrustada.' },
+      { type: 'Bearer token', severity: 'high', regex: /Bearer\s+[a-zA-Z0-9._\-]{20,}/g, detail: 'Cabecera de autorización.' },
+      { type: 'Ruta local', severity: 'medium', regex: /(?:[A-Z]:\\|\/Users\/|\/home\/)[^\s"'<>]{3,}/g, detail: 'Ruta local que puede revelar estructura interna del equipo.' }
+    ];
+
+    function auditJson(data) {
+      const findings = [];
+      function addFinding(severity, type, path, sample, detail) {
+        findings.push({ severity, type, path, sample: maskSample(sample), detail });
+      }
+      function walk(node, path) {
+        if (Array.isArray(node)) {
+          node.forEach((item, index) => walk(item, `${path}[${index}]`));
+          return;
+        }
+        if (node && typeof node === 'object') {
+          Object.keys(node).forEach(key => {
+            const nextPath = path ? `${path}.${key}` : key;
+            const value = node[key];
+            if (sensitiveKeyPatterns.some(pattern => pattern.test(key))) {
+              addFinding('high', 'Clave sensible', nextPath, typeof value === 'string' ? value : key, 'El nombre de esta clave sugiere secreto, contraseña, sesión o token.');
+            }
+            walk(value, nextPath);
+          });
+          return;
+        }
+        if (typeof node === 'string') {
+          valuePatterns.forEach(pattern => {
+            pattern.regex.lastIndex = 0;
+            const matches = node.match(pattern.regex);
+            if (matches) {
+              matches.slice(0, 3).forEach(match => addFinding(pattern.severity, pattern.type, path, match, pattern.detail));
+            }
+          });
+        }
+      }
+      walk(data, '$');
+      return rankFindings(findings).slice(0, 300);
+    }
+
+    function maskSample(sample) {
+      const s = String(sample || '');
+      if (s.length <= 8) return s;
+      if (s.includes('@')) {
+        const [name, domain] = s.split('@');
+        return `${name.slice(0,2)}***@${domain}`;
+      }
+      return `${s.slice(0, 6)}…${s.slice(-4)}`;
+    }
+
+    function rankFindings(items) {
+      const order = { high: 0, medium: 1, low: 2 };
+      return [...items].sort((a,b) => order[a.severity] - order[b.severity]);
+    }
+
+    function interpretJson(data, stats, audit) {
+      const candidates = [];
+      const topKeys = data && typeof data === 'object' && !Array.isArray(data) ? Object.keys(data).map(k => k.toLowerCase()) : [];
+      const rawLower = state.raw.slice(0, 50000).toLowerCase();
+      const add = (score, type, reason, suggestions) => candidates.push({ score, type, reason, suggestions });
+      const hasKeys = (...keys) => keys.some(k => topKeys.includes(k.toLowerCase()));
+
+      if (hasKeys('scripts', 'dependencies', 'devDependencies') && hasKeys('name', 'version')) {
+        add(94, 'package.json / proyecto Node', 'Contiene nombre, versión, scripts o dependencias.', ['Revisa scripts peligrosos antes de instalar.', 'Comprueba versiones y dependencias obsoletas.']);
+      }
+      if (Array.isArray(data) && data.some(item => item && typeof item === 'object' && ('mapping' in item || 'create_time' in item || 'conversation_id' in item))) {
+        add(92, 'Exportación de conversaciones de IA', 'Tiene estructura compatible con historiales de conversación.', ['Audita nombres, correos, prompts privados y tokens antes de compartir.', 'Convierte a Markdown si quieres leerlo mejor.']);
+      }
+      if (hasKeys('data', 'results', 'status', 'meta', 'pagination') || rawLower.includes('"next_page"')) {
+        add(82, 'Respuesta de API o base de datos exportada', 'Aparecen claves típicas de APIs como data, results, meta o status.', ['Usa la vista tabla si hay arrays de objetos.', 'Exporta a CSV para abrirlo en Excel o Sheets.']);
+      }
+      if (rawLower.includes('entity_id') || rawLower.includes('homeassistant') || rawLower.includes('attributes')) {
+        add(88, 'Datos tipo Home Assistant / IoT', 'Detecta entidades, atributos o estados.', ['Revisa URLs internas, tokens y datos de red local.', 'No publiques archivos con ubicaciones o dispositivos privados.']);
+      }
+      if (rawLower.includes('minecraft') || rawLower.includes('quest') || rawLower.includes('npc') || rawLower.includes('level') || rawLower.includes('inventory')) {
+        add(78, 'Datos de videojuego o mod', 'Aparecen términos de niveles, inventario, NPCs o misiones.', ['Haz una copia antes de editar.', 'Valida el JSON después de modificarlo.']);
+      }
+      if (hasKeys('settings', 'config', 'preferences', 'options') || rawLower.includes('"enabled"')) {
+        add(76, 'Archivo de configuración', 'Contiene claves de ajustes, opciones o preferencias.', ['Revisa secretos incrustados.', 'Descarga una versión limpia antes de subirlo a GitHub.']);
+      }
+      if (stats.strings > stats.numbers * 4 && stats.objects > 5 && stats.arrays < stats.objects) {
+        add(70, 'Diccionario / traducciones / contenido textual', 'Predominan valores de texto sobre números y arrays.', ['Convierte a Markdown o TXT para revisión humana.', 'Busca textos vacíos o claves duplicadas.']);
+      }
+      if (!candidates.length) {
+        add(60, 'JSON genérico', 'No encaja con un patrón concreto, pero la estructura es válida.', ['Explora el árbol y usa búsqueda por rutas.', 'Exporta informe de auditoría si vas a compartirlo.']);
+      }
+
+      const best = candidates.sort((a,b) => b.score - a.score)[0];
+      let risk = 100;
+      audit.forEach(f => { risk -= f.severity === 'high' ? 12 : f.severity === 'medium' ? 5 : 2; });
+      if (state.duplicates.length) risk -= Math.min(18, state.duplicates.length * 2);
+      risk = Math.max(0, Math.min(100, risk));
+
+      return {
+        ...best,
+        riskScore: risk,
+        riskLabel: risk >= 90 ? 'Bajo' : risk >= 70 ? 'Medio' : 'Alto'
+      };
+    }
+
+    function flatten(obj, prefix = '', out = {}) {
+      if (Array.isArray(obj)) {
+        obj.forEach((value, index) => flatten(value, `${prefix}[${index}]`, out));
+      } else if (obj && typeof obj === 'object') {
+        Object.keys(obj).forEach(key => {
+          const path = prefix ? `${prefix}.${key}` : key;
+          flatten(obj[key], path, out);
+        });
+      } else {
+        out[prefix || '$'] = obj;
+      }
+      return out;
+    }
+
+    function findTableData(data) {
+      const candidates = [];
+      function walk(node, path) {
+        if (Array.isArray(node)) {
+          const objects = node.filter(item => item && typeof item === 'object' && !Array.isArray(item));
+          if (objects.length >= 1) candidates.push({ path, rows: objects, score: objects.length * 3 + Object.keys(flatten(objects[0] || {})).length });
+          node.forEach((item, idx) => walk(item, `${path}[${idx}]`));
+        } else if (node && typeof node === 'object') {
+          Object.keys(node).forEach(key => walk(node[key], path ? `${path}.${key}` : key));
+        }
+      }
+      walk(data, '$');
+      if (!candidates.length) return null;
+      const best = candidates.sort((a,b) => b.score - a.score)[0];
+      const flatRows = best.rows.slice(0, 500).map(row => flatten(row));
+      const columns = [...new Set(flatRows.flatMap(row => Object.keys(row)))].slice(0, 40);
+      return { path: best.path, rows: flatRows, columns, totalRows: best.rows.length };
+    }
+
+    function renderAll() {
+      renderQuickMetrics(state.stats);
+      renderResumen();
+      renderTree();
+      renderCode();
+      renderTable();
+      renderAudit();
+      renderConvert();
+      renderTemplates();
+      renderCompare();
+    }
+
+    function renderQuickMetrics(stats) {
+      const metrics = $('quickMetrics');
+      if (!stats) {
+        metrics.innerHTML = `
+          <div class="metric"><div class="value">—</div><div class="label">Tamaño</div></div>
+          <div class="metric"><div class="value">—</div><div class="label">Claves</div></div>
+          <div class="metric"><div class="value">—</div><div class="label">Objetos</div></div>
+          <div class="metric"><div class="value">—</div><div class="label">Riesgos</div></div>`;
+        return;
+      }
+      metrics.innerHTML = `
+        <div class="metric"><div class="value">${formatBytes(stats.bytes)}</div><div class="label">Tamaño</div></div>
+        <div class="metric"><div class="value">${stats.keys}</div><div class="label">Claves</div></div>
+        <div class="metric"><div class="value">${stats.objects}</div><div class="label">Objetos</div></div>
+        <div class="metric"><div class="value">${state.audit.length}</div><div class="label">Riesgos</div></div>`;
+    }
+
+    function renderResumen() {
+      const s = state.stats;
+      const i = state.interpretation;
+      $('panel-resumen').innerHTML = `
+        <div class="analysis-grid">
+          <div>
+            <div class="insight">
+              <h3><span class="score">${i.score}</span> Interpretación local: ${escapeHtml(i.type)}</h3>
+              <p>${escapeHtml(i.reason)}</p>
+              <ul>${i.suggestions.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>
+            </div>
+            <div class="insight">
+              <h3>Salud y privacidad</h3>
+              <p>Riesgo estimado: <strong>${escapeHtml(i.riskLabel)}</strong> · Puntuación de seguridad: <strong>${i.riskScore}/100</strong>.</p>
+              <p>${state.audit.length ? 'Hay hallazgos que conviene revisar antes de publicar o compartir este archivo.' : 'No se han detectado secretos evidentes, aunque siempre conviene revisar manualmente datos privados.'}</p>
+            </div>
+            <div class="insight">
+              <h3>Acciones recomendadas</h3>
+              <ul>
+                <li>Usa <strong>Auditoría</strong> para revisar emails, URLs, tokens o claves sensibles.</li>
+                <li>Usa <strong>Convertir</strong> para exportar a CSV, Markdown, XML, YAML, HTML, schema, rutas JSONPath o TXT.</li>
+                <li>Usa <strong>Descargar limpio</strong> para generar una copia con campos sensibles ocultos.</li>
+                <li>Usa <strong>Plantillas</strong> para empezar package.json, respuestas API, catálogos, traducciones o backups de prueba.</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="insight">
+              <h3>Estadísticas</h3>
+              <div class="status-panel">
+                <div class="metric"><div class="value">${formatBytes(s.bytes)}</div><div class="label">Peso</div></div>
+                <div class="metric"><div class="value">${s.maxDepth}</div><div class="label">Profundidad</div></div>
+                <div class="metric"><div class="value">${s.arrays}</div><div class="label">Arrays</div></div>
+                <div class="metric"><div class="value">${s.objects}</div><div class="label">Objetos</div></div>
+                <div class="metric"><div class="value">${s.keys}</div><div class="label">Claves</div></div>
+                <div class="metric"><div class="value">${s.leafValues}</div><div class="label">Valores finales</div></div>
+                <div class="metric"><div class="value">${s.emptyStrings + s.nulls + s.emptyArrays + s.emptyObjects}</div><div class="label">Vacíos / nulos</div></div>
+                <div class="metric"><div class="value">${state.duplicates.length}</div><div class="label">Claves duplicadas</div></div>
+              </div>
+            </div>
+            <div class="insight">
+              <h3>Tipo de datos</h3>
+              <p>Textos: ${s.strings} · Números: ${s.numbers} · Booleanos: ${s.booleans} · Nulos: ${s.nulls}</p>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderTree() {
+      $('panel-arbol').innerHTML = `<div class="tree">${renderNode(state.data, '$', 0)}</div>`;
+    }
+
+    function renderNode(node, path, depth) {
+      if (depth > 80) return `<span class="null">[profundidad máxima de vista alcanzada]</span>`;
+      const matches = state.search && `${path} ${JSON.stringify(node)?.slice(0,200)}`.toLowerCase().includes(state.search.toLowerCase());
+      const mark = matches ? ' style="background:rgba(250,204,21,.18);border-radius:6px;padding:1px 3px"' : '';
+      if (Array.isArray(node)) {
+        const preview = `Array(${node.length})`;
+        const limit = depth <= 1 ? 250 : 80;
+        const items = node.slice(0, limit).map((item, idx) => `<div><span class="key">[${idx}]</span>: ${renderNode(item, `${path}[${idx}]`, depth + 1)}</div>`).join('');
+        const more = node.length > limit ? `<div class="path-pill">… ${node.length - limit} elementos más omitidos en la vista para mantener rendimiento</div>` : '';
+        return `<details ${depth < 3 ? 'open' : ''}><summary${mark}>${preview}<span class="path-pill">${escapeHtml(path)}</span></summary>${items}${more}</details>`;
+      }
+      if (node && typeof node === 'object') {
+        const keys = Object.keys(node);
+        const preview = `Object(${keys.length})`;
+        const limit = depth <= 1 ? 500 : 120;
+        const visibleKeys = keys.slice(0, limit);
+        const body = visibleKeys.map(key => `<div><span class="key">${escapeHtml(key)}</span>: ${renderNode(node[key], `${path}.${key}`, depth + 1)}</div>`).join('');
+        const more = keys.length > limit ? `<div class="path-pill">… ${keys.length - limit} claves más omitidas en la vista para mantener rendimiento</div>` : '';
+        return `<details ${depth < 3 ? 'open' : ''}><summary${mark}>${preview}<span class="path-pill">${escapeHtml(path)}</span></summary>${body}${more}</details>`;
+      }
+      return `<span${mark} class="${valueClass(node)}">${escapeHtml(valuePreview(node))}</span>`;
+    }
+
+    function valueClass(value) {
+      if (value === null) return 'null';
+      if (typeof value === 'string') return 'string';
+      if (typeof value === 'number') return 'number';
+      if (typeof value === 'boolean') return 'boolean';
+      return '';
+    }
+
+    function valuePreview(value) {
+      if (value === null) return 'null';
+      if (typeof value === 'string') return `"${value.length > 180 ? value.slice(0, 180) + '…' : value}"`;
+      return String(value);
+    }
+
+    function renderCode() {
+      let pretty = JSON.stringify(state.data, null, 2);
+      if (state.search) {
+        const safe = escapeHtml(pretty);
+        const escapedTerm = escapeRegExp(escapeHtml(state.search));
+        pretty = safe.replace(new RegExp(escapedTerm, 'gi'), match => `<mark>${match}</mark>`);
+        $('panel-codigo').innerHTML = `<pre class="codebox">${pretty}</pre>`;
+      } else {
+        $('panel-codigo').innerHTML = `<pre class="codebox">${escapeHtml(pretty)}</pre>`;
+      }
+    }
+
+    function escapeRegExp(str) {
+      return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function renderTable() {
+      const table = state.tableData;
+      if (!table) {
+        $('panel-tabla').innerHTML = `<div class="empty"><div><strong>No hay tabla directa</strong>El JSON no contiene un array de objetos claro para convertirlo en tabla.</div></div>`;
+        return;
+      }
+      const rows = table.rows.slice(0, 200);
+      $('panel-tabla').innerHTML = `
+        <div class="row" style="margin-bottom:10px">
+          <span class="chip">Ruta: <strong>${escapeHtml(table.path)}</strong></span>
+          <span class="chip">Filas detectadas: <strong>${table.totalRows}</strong></span>
+          <span class="chip">Columnas: <strong>${table.columns.length}</strong></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>${table.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
+            <tbody>${rows.map(row => `<tr>${table.columns.map(c => `<td>${escapeHtml(cellValue(row[c]))}</td>`).join('')}</tr>`).join('')}</tbody>
+          </table>
+        </div>`;
+    }
+
+    function cellValue(value) {
+      if (value === undefined) return '';
+      if (value === null) return 'null';
+      if (typeof value === 'object') return JSON.stringify(value);
+      return String(value);
+    }
+
+    function renderAudit() {
+      const duplicateHtml = state.duplicates.length ? `
+        <div class="insight">
+          <h3>Claves duplicadas detectadas</h3>
+          <p>JSON permite que algunas herramientas sobrescriban claves repetidas. Conviene revisarlas.</p>
+          <ul>${state.duplicates.slice(0,20).map(d => `<li><code>${escapeHtml(d.key)}</code> en objeto #${d.object}, línea ${d.line}, columna ${d.column}</li>`).join('')}</ul>
+        </div>` : '';
+
+      if (!state.audit.length && !state.duplicates.length) {
+        $('panel-auditoria').innerHTML = `<div class="empty"><div><strong>Sin riesgos evidentes</strong>No se han detectado tokens, emails, contraseñas o claves sensibles evidentes. Aun así, revisa manualmente antes de publicar.</div></div>`;
+        return;
+      }
+
+      $('panel-auditoria').innerHTML = `
+        ${duplicateHtml}
+        <div class="row" style="margin-bottom:10px">
+          <span class="chip danger">Altos: <strong>${state.audit.filter(x => x.severity === 'high').length}</strong></span>
+          <span class="chip warn">Medios: <strong>${state.audit.filter(x => x.severity === 'medium').length}</strong></span>
+          <span class="chip">Bajos: <strong>${state.audit.filter(x => x.severity === 'low').length}</strong></span>
+        </div>
+        <div class="audit-list">
+          ${state.audit.map(item => `
+            <div class="finding">
+              <div class="sev ${item.severity}">${severityLabel(item.severity)}</div>
+              <div>
+                <code>${escapeHtml(item.path)}</code>
+                <p>${escapeHtml(item.type)} · ${escapeHtml(item.detail)} Muestra: <code>${escapeHtml(item.sample)}</code></p>
+              </div>
+              <button class="btn small" data-copy-path="${escapeHtml(item.path)}">Copiar ruta</button>
+            </div>`).join('')}
+        </div>`;
+      document.querySelectorAll('[data-copy-path]').forEach(btn => btn.addEventListener('click', () => copyText(btn.dataset.copyPath)));
+    }
+
+    function severityLabel(sev) {
+      if (sev === 'high') return 'Alto';
+      if (sev === 'medium') return 'Medio';
+      return 'Bajo';
+    }
+
+    function renderConvert() {
+      const conversions = [
+        ['JSON formateado', 'Archivo legible con sangría de 2 espacios.', 'json', () => JSON.stringify(state.data, null, 2)],
+        ['JSON minificado', 'Mismo contenido ocupando menos espacio.', 'json', () => JSON.stringify(state.data)],
+        ['CSV', 'Convierte el primer array de objetos detectado en tabla CSV.', 'csv', () => toCSV()],
+        ['Markdown', 'Genera tabla Markdown si hay datos tabulares.', 'md', () => toMarkdown()],
+        ['YAML básico', 'Conversión simple para configuración y lectura humana.', 'yaml', () => toYAML(state.data)],
+        ['XML básico', 'Exportación XML sencilla para interoperabilidad.', 'xml', () => toXML(state.data)],
+        ['TXT resumen', 'Informe legible con estructura, estadísticas y riesgos.', 'txt', () => toTextReport()],
+        ['Informe privacidad', 'Resumen centrado en datos sensibles y recomendación de publicación.', 'md', () => toPrivacyReport()],
+        ['Informe para README', 'Bloque Markdown para documentar qué contiene el JSON.', 'md', () => toReadmeBlock()],
+        ['JSON Schema básico', 'Esquema inferido para validar estructuras parecidas.', 'json', () => JSON.stringify(inferSchema(state.data), null, 2)],
+        ['Rutas JSONPath', 'Listado de rutas y valores finales para inspección técnica.', 'txt', () => listJsonPaths(state.data).join('\n')],
+        ['HTML informe', 'Informe HTML autónomo con resumen y auditoría.', 'html', () => toHtmlReport()]
+      ];
+      $('panel-convertir').innerHTML = `<div class="convert-grid">${conversions.map((c, idx) => `
+        <div class="convert-card">
+          <h3>${escapeHtml(c[0])}</h3>
+          <p>${escapeHtml(c[1])}</p>
+          <div class="row"><button class="btn primary" data-download-conv="${idx}">Descargar .${c[2]}</button><button class="btn" data-copy-conv="${idx}">Copiar</button></div>
+        </div>`).join('')}</div>`;
+      document.querySelectorAll('[data-download-conv]').forEach(btn => btn.addEventListener('click', () => {
+        const c = conversions[Number(btn.dataset.downloadConv)];
+        downloadText(c[3](), fileBaseName() + '.' + c[2], mimeFor(c[2]));
+      }));
+      document.querySelectorAll('[data-copy-conv]').forEach(btn => btn.addEventListener('click', () => {
+        const c = conversions[Number(btn.dataset.copyConv)];
+        copyText(c[3]());
+      }));
+    }
+
+
+    function renderTemplates() {
+      const cards = jsonTemplates.map((tpl, idx) => `
+        <div class="template-card">
+          <h3>${escapeHtml(tpl.name)}</h3>
+          <p>${escapeHtml(tpl.description)}</p>
+          <div class="badge-row">
+            <span class="mini-badge">${escapeHtml(tpl.category)}</span>
+            ${tpl.tags.map(t => `<span class="mini-badge">${escapeHtml(t)}</span>`).join('')}
+          </div>
+          <div class="row">
+            <button class="btn primary" data-load-template="${idx}">Cargar</button>
+            <button class="btn" data-copy-template="${idx}">Copiar</button>
+            <button class="btn" data-download-template="${idx}">Descargar</button>
+          </div>
+        </div>`).join('');
+
+      const schemaPreview = state.data ? `
+        <div class="insight schema-box">
+          <h3>Esquema inferido del JSON actual</h3>
+          <p>Genera una aproximación tipo JSON Schema. Es útil para documentar APIs, validar estructuras parecidas o explicar el formato de tus datos.</p>
+          <div class="row">
+            <button class="btn primary" id="downloadSchemaBtn">Descargar schema</button>
+            <button class="btn" id="copySchemaBtn">Copiar schema</button>
+            <button class="btn" id="copyPathsBtn">Copiar rutas JSONPath</button>
+          </div>
+        </div>` : `
+        <div class="insight schema-box">
+          <h3>Plantillas listas</h3>
+          <p>Carga una plantilla para aprender, probar conversiones o empezar un archivo JSON bien estructurado.</p>
+        </div>`;
+
+      $('panel-plantillas').innerHTML = `${schemaPreview}<div class="template-grid">${cards}</div>`;
+
+      document.querySelectorAll('[data-load-template]').forEach(btn => btn.addEventListener('click', () => {
+        const tpl = jsonTemplates[Number(btn.dataset.loadTemplate)];
+        state.fileName = tpl.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.json';
+        $('jsonInput').value = JSON.stringify(tpl.data, null, 2);
+        analyze();
+        setTab('resumen');
+      }));
+      document.querySelectorAll('[data-copy-template]').forEach(btn => btn.addEventListener('click', () => {
+        const tpl = jsonTemplates[Number(btn.dataset.copyTemplate)];
+        copyText(JSON.stringify(tpl.data, null, 2));
+      }));
+      document.querySelectorAll('[data-download-template]').forEach(btn => btn.addEventListener('click', () => {
+        const tpl = jsonTemplates[Number(btn.dataset.downloadTemplate)];
+        const name = tpl.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.json';
+        downloadText(JSON.stringify(tpl.data, null, 2), name, 'application/json');
+      }));
+      if (state.data) {
+        $('downloadSchemaBtn')?.addEventListener('click', () => downloadText(JSON.stringify(inferSchema(state.data), null, 2), fileBaseName() + '.schema.json', 'application/json'));
+        $('copySchemaBtn')?.addEventListener('click', () => copyText(JSON.stringify(inferSchema(state.data), null, 2)));
+        $('copyPathsBtn')?.addEventListener('click', () => copyText(listJsonPaths(state.data).join('\n')));
+      }
+    }
+
+    function inferSchema(value, depth = 0) {
+      const type = Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value;
+      if (depth > 8) return { description: 'Profundidad omitida por seguridad de vista' };
+      if (type === 'array') {
+        const sample = value.slice(0, 25);
+        return { type: 'array', items: mergeSchemas(sample.map(item => inferSchema(item, depth + 1))) };
+      }
+      if (type === 'object') {
+        const props = {};
+        const required = [];
+        Object.keys(value).forEach(key => {
+          props[key] = inferSchema(value[key], depth + 1);
+          if (value[key] !== null && value[key] !== '') required.push(key);
+        });
+        const out = { type: 'object', properties: props };
+        if (required.length) out.required = required;
+        return out;
+      }
+      if (type === 'number') return { type: Number.isInteger(value) ? 'integer' : 'number', examples: [value] };
+      if (type === 'string') return { type: 'string', examples: value ? [String(value).slice(0, 80)] : [] };
+      if (type === 'boolean') return { type: 'boolean' };
+      return { type: 'null' };
+    }
+
+    function mergeSchemas(schemas) {
+      if (!schemas.length) return {};
+      const types = [...new Set(schemas.map(s => s.type || 'unknown'))];
+      if (types.length > 1) return { anyOf: schemas.slice(0, 8) };
+      const first = schemas[0];
+      if (first.type === 'object') {
+        const props = {};
+        schemas.forEach(schema => Object.entries(schema.properties || {}).forEach(([key, val]) => {
+          props[key] = props[key] ? mergeSchemas([props[key], val]) : val;
+        }));
+        return { type: 'object', properties: props };
+      }
+      if (first.type === 'array') return { type: 'array', items: mergeSchemas(schemas.map(s => s.items || {})) };
+      return first;
+    }
+
+    function listJsonPaths(value) {
+      const rows = [];
+      function walk(node, path) {
+        if (rows.length > 5000) return;
+        if (Array.isArray(node)) return node.forEach((item, index) => walk(item, `${path}[${index}]`));
+        if (node && typeof node === 'object') return Object.keys(node).forEach(key => walk(node[key], `${path}.${key}`));
+        rows.push(`${path} = ${node === null ? 'null' : String(node).slice(0, 240)}`);
+      }
+      walk(value, '$');
+      return rows;
+    }
+
+    function toPrivacyReport() {
+      const high = state.audit.filter(x => x.severity === 'high');
+      const medium = state.audit.filter(x => x.severity === 'medium');
+      const low = state.audit.filter(x => x.severity === 'low');
+      const publish = high.length ? 'NO recomendado publicar sin limpiar' : medium.length ? 'Publicar solo tras revisión manual' : 'Apto para publicar con revisión normal';
+      return [
+        '# Informe de privacidad JSON',
+        '',
+        `Archivo: ${state.fileName}`,
+        `Veredicto: **${publish}**`,
+        `Riesgo estimado: **${state.interpretation.riskLabel}** (${state.interpretation.riskScore}/100)`,
+        '',
+        '## Hallazgos',
+        `- Alto: ${high.length}`,
+        `- Medio: ${medium.length}`,
+        `- Bajo: ${low.length}`,
+        `- Claves duplicadas: ${state.duplicates.length}`,
+        '',
+        '## Qué revisar antes de subir a GitHub',
+        '- Tokens, API keys, passwords, sesiones y cookies.',
+        '- Emails, teléfonos, nombres reales y URLs privadas.',
+        '- Datos internos de servidores, rutas locales o endpoints no públicos.',
+        '',
+        '## Detalle',
+        state.audit.length ? state.audit.slice(0, 80).map(f => `- **${severityLabel(f.severity)}** · ${f.type} · \`${f.path}\` · ${f.detail}`).join('\n') : '- No se han detectado riesgos evidentes.',
+        '',
+        'Generado localmente con JSON Studio Pro 404.'
+      ].join('\n');
+    }
+
+    function toReadmeBlock() {
+      const s = state.stats;
+      return [
+        '## Descripción del JSON',
+        '',
+        `Este archivo ha sido analizado como: **${state.interpretation.type}**.`,
+        '',
+        '### Estructura',
+        `- Tipo raíz: ${s.topType}`,
+        `- Tamaño: ${formatBytes(s.bytes)}`,
+        `- Claves: ${s.keys}`,
+        `- Objetos: ${s.objects}`,
+        `- Arrays: ${s.arrays}`,
+        `- Profundidad máxima: ${s.maxDepth}`,
+        '',
+        '### Privacidad',
+        `- Riesgo estimado: ${state.interpretation.riskLabel}`,
+        `- Hallazgos de auditoría: ${state.audit.length}`,
+        `- Claves duplicadas: ${state.duplicates.length}`,
+        '',
+        '### Recomendación',
+        state.audit.some(f => f.severity === 'high')
+          ? 'No publiques este JSON hasta ocultar o eliminar los campos sensibles detectados.'
+          : 'Puede compartirse tras una revisión manual final.'
+      ].join('\n');
+    }
+
+    function sortKeysDeep(value) {
+      if (Array.isArray(value)) return value.map(sortKeysDeep);
+      if (value && typeof value === 'object') {
+        return Object.keys(value).sort((a,b) => a.localeCompare(b)).reduce((out, key) => {
+          out[key] = sortKeysDeep(value[key]);
+          return out;
+        }, {});
+      }
+      return value;
+    }
+
+    function repairJsonBasic(raw) {
+      let repaired = raw.trim();
+      repaired = repaired.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+      repaired = repaired.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+      repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+      repaired = repaired.replace(/([{,]\s*)([A-Za-z_$][\w$-]*)(\s*:)/g, '$1"$2"$3');
+      repaired = repaired.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_, inner) => '"' + inner.replace(/"/g, '\\"') + '"');
+      return repaired;
+    }
+
+    function sanitizeJson(value, currentKey = '') {
+      if (Array.isArray(value)) return value.map(item => sanitizeJson(item, currentKey));
+      if (value && typeof value === 'object') {
+        const out = {};
+        Object.keys(value).forEach(key => {
+          if (sensitiveKeyPatterns.some(pattern => pattern.test(key))) out[key] = '[REDACTED]';
+          else out[key] = sanitizeJson(value[key], key);
+        });
+        return out;
+      }
+      if (typeof value === 'string') {
+        let clean = value;
+        valuePatterns.filter(p => p.severity === 'high' || p.type === 'Email' || p.type === 'Teléfono').forEach(pattern => {
+          pattern.regex.lastIndex = 0;
+          clean = clean.replace(pattern.regex, '[REDACTED]');
+        });
+        return clean;
+      }
+      return value;
+    }
+
+    function renderCompare() {
+      $('panel-comparar').innerHTML = `
+        <div class="insight">
+          <h3>Comparar con otro JSON</h3>
+          <p>Pega un segundo JSON para detectar diferencias básicas de claves, tipos y estructura superior.</p>
+        </div>
+        <textarea id="compareInput" placeholder="Pega aquí el segundo JSON" spellcheck="false"></textarea>
+        <div class="row" style="margin-top:10px"><button class="btn primary" id="compareBtn">Comparar</button></div>
+        <div id="compareResult" style="margin-top:12px"></div>`;
+      $('compareBtn').addEventListener('click', compareJsons);
+    }
+
+    function compareJsons() {
+      const raw = $('compareInput').value.trim();
+      const target = $('compareResult');
+      if (!raw) { target.innerHTML = `<div class="error-box">Pega un segundo JSON para comparar.</div>`; return; }
+      try {
+        const other = JSON.parse(raw);
+        const diffs = diffSummary(state.data, other);
+        target.innerHTML = `<div class="insight"><h3>Resultado</h3>${diffs.length ? `<ul>${diffs.map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul>` : '<p>No se han detectado diferencias estructurales básicas.</p>'}</div>`;
+      } catch (e) {
+        target.innerHTML = `<div class="error-box">Segundo JSON no válido: ${escapeHtml(explainJsonError(raw, e))}</div>`;
+      }
+    }
+
+    function diffSummary(a, b) {
+      const diffs = [];
+      function typeOf(x) { return Array.isArray(x) ? 'array' : x === null ? 'null' : typeof x; }
+      function walk(x, y, path, depth) {
+        if (diffs.length > 80 || depth > 5) return;
+        const tx = typeOf(x), ty = typeOf(y);
+        if (tx !== ty) { diffs.push(`${path}: tipo distinto (${tx} vs ${ty})`); return; }
+        if (tx === 'object') {
+          const kx = Object.keys(x), ky = Object.keys(y);
+          kx.filter(k => !ky.includes(k)).forEach(k => diffs.push(`${path}.${k}: solo en el primer JSON`));
+          ky.filter(k => !kx.includes(k)).forEach(k => diffs.push(`${path}.${k}: solo en el segundo JSON`));
+          kx.filter(k => ky.includes(k)).slice(0, 60).forEach(k => walk(x[k], y[k], `${path}.${k}`, depth + 1));
+        } else if (tx === 'array') {
+          if (x.length !== y.length) diffs.push(`${path}: longitud distinta (${x.length} vs ${y.length})`);
+          for (let i = 0; i < Math.min(x.length, y.length, 20); i++) walk(x[i], y[i], `${path}[${i}]`, depth + 1);
+        } else if (x !== y && depth <= 2) {
+          diffs.push(`${path}: valor distinto`);
+        }
+      }
+      walk(a, b, '$', 0);
+      return diffs.slice(0, 80);
+    }
+
+    function toCSV() {
+      const table = state.tableData;
+      if (!table) return 'No hay array de objetos convertible a CSV.';
+      const esc = v => `"${String(v ?? '').replaceAll('"', '""')}"`;
+      const lines = [table.columns.map(esc).join(',')];
+      table.rows.forEach(row => lines.push(table.columns.map(c => esc(cellValue(row[c]))).join(',')));
+      return lines.join('\n');
+    }
+
+    function toMarkdown() {
+      const table = state.tableData;
+      if (!table) return toTextReport();
+      const cols = table.columns.slice(0, 12);
+      const lines = [];
+      lines.push(`| ${cols.map(escapeMarkdown).join(' | ')} |`);
+      lines.push(`| ${cols.map(() => '---').join(' | ')} |`);
+      table.rows.slice(0, 80).forEach(row => lines.push(`| ${cols.map(c => escapeMarkdown(cellValue(row[c]))).join(' | ')} |`));
+      return lines.join('\n');
+    }
+
+    function escapeMarkdown(value) {
+      return String(value ?? '').replaceAll('|', '\\|').replace(/\s+/g, ' ').slice(0, 180);
+    }
+
+    function toYAML(value, indent = 0) {
+      const sp = '  '.repeat(indent);
+      if (Array.isArray(value)) {
+        if (!value.length) return '[]';
+        return value.map(item => {
+          if (item && typeof item === 'object') return `${sp}-\n${toYAML(item, indent + 1)}`;
+          return `${sp}- ${yamlScalar(item)}`;
+        }).join('\n');
+      }
+      if (value && typeof value === 'object') {
+        const keys = Object.keys(value);
+        if (!keys.length) return '{}';
+        return keys.map(key => {
+          const v = value[key];
+          if (v && typeof v === 'object') return `${sp}${key}:\n${toYAML(v, indent + 1)}`;
+          return `${sp}${key}: ${yamlScalar(v)}`;
+        }).join('\n');
+      }
+      return yamlScalar(value);
+    }
+
+    function yamlScalar(value) {
+      if (value === null) return 'null';
+      if (typeof value === 'string') return JSON.stringify(value);
+      return String(value);
+    }
+
+    function toXML(value, name = 'root', indent = 0) {
+      const sp = '  '.repeat(indent);
+      const safeName = String(name).replace(/[^a-zA-Z0-9_\-:.]/g, '_') || 'item';
+      if (Array.isArray(value)) return value.map(item => toXML(item, 'item', indent)).join('\n');
+      if (value && typeof value === 'object') {
+        const children = Object.keys(value).map(key => toXML(value[key], key, indent + 1)).join('\n');
+        return `${sp}<${safeName}>\n${children}\n${sp}</${safeName}>`;
+      }
+      return `${sp}<${safeName}>${escapeHtml(value === null ? '' : value)}</${safeName}>`;
+    }
+
+    function toTextReport() {
+      const s = state.stats;
+      const i = state.interpretation;
+      return [
+        'JSON Studio Pro 404 - Informe local',
+        '====================================',
+        '',
+        `Archivo: ${state.fileName}`,
+        `Interpretación: ${i.type}`,
+        `Motivo: ${i.reason}`,
+        `Riesgo estimado: ${i.riskLabel} (${i.riskScore}/100)`,
+        '',
+        'Estadísticas:',
+        `- Tamaño: ${formatBytes(s.bytes)}`,
+        `- Claves: ${s.keys}`,
+        `- Objetos: ${s.objects}`,
+        `- Arrays: ${s.arrays}`,
+        `- Profundidad máxima: ${s.maxDepth}`,
+        `- Textos: ${s.strings}`,
+        `- Números: ${s.numbers}`,
+        `- Booleanos: ${s.booleans}`,
+        `- Nulos: ${s.nulls}`,
+        `- Vacíos: ${s.emptyStrings + s.emptyArrays + s.emptyObjects}`,
+        '',
+        'Auditoría:',
+        state.audit.length ? state.audit.map(f => `- [${severityLabel(f.severity)}] ${f.type} en ${f.path}: ${f.detail} (${f.sample})`).join('\n') : '- Sin riesgos evidentes.',
+        '',
+        'Claves duplicadas:',
+        state.duplicates.length ? state.duplicates.map(d => `- ${d.key} en línea ${d.line}, columna ${d.column}`).join('\n') : '- No detectadas.'
+      ].join('\n');
+    }
+
+    function toHtmlReport() {
+      return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Informe JSON Studio Pro 404</title><style>body{font-family:system-ui;margin:32px;line-height:1.5}code{background:#eee;padding:2px 5px;border-radius:5px}li{margin:6px 0}</style></head><body><pre>${escapeHtml(toTextReport())}</pre></body></html>`;
+    }
+
+    function downloadText(text, filename, type = 'text/plain') {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast(`Descargado: ${filename}`);
+    }
+
+    function mimeFor(ext) {
+      return {
+        json: 'application/json', csv: 'text/csv', md: 'text/markdown', yaml: 'text/yaml', xml: 'application/xml', txt: 'text/plain', html: 'text/html'
+      }[ext] || 'text/plain';
+    }
+
+    function fileBaseName() {
+      return (state.fileName || 'json-studio-pro-404').replace(/\.[^.]+$/, '').replace(/[^a-z0-9_\-]+/gi, '-').slice(0, 80) || 'json-studio-pro-404';
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('Copiado al portapapeles');
+      } catch {
+        showToast('No se pudo copiar automáticamente');
+      }
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      state.fileName = file.name || 'archivo.json';
+      const reader = new FileReader();
+      reader.onload = () => {
+        $('jsonInput').value = String(reader.result || '');
+        analyze();
+      };
+      reader.onerror = () => setError('No se pudo leer el archivo.');
+      reader.readAsText(file);
+    }
+
+    function bindEvents() {
+      $('analyzeBtn').addEventListener('click', analyze);
+      $('formatBtn').addEventListener('click', () => {
+        try { $('jsonInput').value = JSON.stringify(JSON.parse($('jsonInput').value), null, 2); analyze(); }
+        catch (e) { setError(explainJsonError($('jsonInput').value, e)); }
+      });
+      $('minifyBtn').addEventListener('click', () => {
+        try { $('jsonInput').value = JSON.stringify(JSON.parse($('jsonInput').value)); analyze(); }
+        catch (e) { setError(explainJsonError($('jsonInput').value, e)); }
+      });
+      $('repairBtn').addEventListener('click', () => {
+        const before = $('jsonInput').value;
+        $('jsonInput').value = repairJsonBasic(before);
+        try { JSON.parse($('jsonInput').value); analyze(); showToast('Reparación básica aplicada'); }
+        catch (e) { setError('He aplicado una reparación básica, pero el JSON sigue necesitando revisión manual. ' + explainJsonError($('jsonInput').value, e)); }
+      });
+      $('sortKeysBtn').addEventListener('click', () => {
+        try { $('jsonInput').value = JSON.stringify(sortKeysDeep(JSON.parse($('jsonInput').value)), null, 2); analyze(); showToast('Claves ordenadas'); }
+        catch (e) { setError(explainJsonError($('jsonInput').value, e)); }
+      });
+      $('loadDemoBtn').addEventListener('click', () => { state.fileName = 'demo-json-studio-pro-404.json'; $('jsonInput').value = demo; analyze(); });
+      $('resetBtn').addEventListener('click', () => { state.raw = ''; state.data = null; $('jsonInput').value = ''; $('parseStatus').innerHTML = ''; $('emptyState').style.display = 'grid'; clearPanels(); renderQuickMetrics(null); showToast('Limpio'); });
+      $('copyPrettyBtn').addEventListener('click', () => state.data ? copyText(JSON.stringify(state.data, null, 2)) : showToast('Carga un JSON primero'));
+      $('downloadCleanBtn').addEventListener('click', () => {
+        if (!state.data) { showToast('Carga un JSON primero'); return; }
+        downloadText(JSON.stringify(sanitizeJson(state.data), null, 2), `${fileBaseName()}-limpio.json`, 'application/json');
+      });
+      $('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+      $('dropzone').addEventListener('click', () => $('fileInput').click());
+      $('dropzone').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') $('fileInput').click(); });
+      ['dragenter','dragover'].forEach(evt => $('dropzone').addEventListener(evt, e => { e.preventDefault(); $('dropzone').classList.add('dragging'); }));
+      ['dragleave','drop'].forEach(evt => $('dropzone').addEventListener(evt, e => { e.preventDefault(); $('dropzone').classList.remove('dragging'); }));
+      $('dropzone').addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+      $('themeSelect').addEventListener('change', e => {
+        document.documentElement.dataset.theme = e.target.value;
+        localStorage.setItem('json-studio-theme', e.target.value);
+      });
+      $('searchInput').addEventListener('input', e => {
+        state.search = e.target.value.trim();
+        if (state.data) { renderTree(); renderCode(); }
+      });
+      document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => setTab(tab.dataset.tab)));
+    }
+
+    function setTab(name) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab.dataset.tab === name));
+      panels.forEach(p => $(`panel-${p}`).classList.toggle('active', p === name));
+      $('emptyState').style.display = state.data ? 'none' : 'grid';
+    }
+
+    function boot() {
+      const savedTheme = localStorage.getItem('json-studio-theme');
+      if (savedTheme) {
+        document.documentElement.dataset.theme = savedTheme;
+        $('themeSelect').value = savedTheme;
+      }
+      bindEvents();
+      renderQuickMetrics(null);
+    }
+
+    boot();
+  </script>
+</body>
+</html>
