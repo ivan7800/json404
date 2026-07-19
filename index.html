@@ -441,16 +441,19 @@
           </div>
         </div>
 
+        <div id="recentFiles" style="margin-top:12px;"></div>
+
         <div style="height:14px"></div>
         <textarea id="jsonInput" placeholder='Pega aquí tu JSON. Ejemplo: {"nombre":"demo","activo":true}' spellcheck="false"></textarea>
         <div class="row" style="margin-top:10px;">
           <button class="btn primary" id="analyzeBtn">Analizar JSON</button>
           <button class="btn" id="formatBtn">Formatear</button>
           <button class="btn" id="minifyBtn">Minificar</button>
-          <button class="btn" id="repairBtn">Reparar básico</button>
+          <button class="btn" id="repairBtn">Reparar JSON</button>
           <button class="btn" id="sortKeysBtn">Ordenar claves</button>
         </div>
 
+        <div id="repairReport"></div>
         <div id="parseStatus" style="margin-top:14px"></div>
 
         <div class="status-panel" id="quickMetrics">
@@ -471,7 +474,9 @@
           <nav class="tabs" aria-label="Vistas">
             <button class="tab active" data-tab="resumen">Resumen</button>
             <button class="tab" data-tab="arbol">Árbol</button>
+            <button class="tab" data-tab="consulta">Consulta</button>
             <button class="tab" data-tab="codigo">Código</button>
+            <button class="tab" data-tab="generar">Generar</button>
             <button class="tab" data-tab="tabla">Tabla</button>
             <button class="tab" data-tab="auditoria">Auditoría</button>
             <button class="tab" data-tab="convertir">Convertir</button>
@@ -489,7 +494,9 @@
 
           <section id="panel-resumen" class="panel active"></section>
           <section id="panel-arbol" class="panel"></section>
+          <section id="panel-consulta" class="panel"></section>
           <section id="panel-codigo" class="panel"></section>
+          <section id="panel-generar" class="panel"></section>
           <section id="panel-tabla" class="panel"></section>
           <section id="panel-auditoria" class="panel"></section>
           <section id="panel-convertir" class="panel"></section>
@@ -499,7 +506,7 @@
       </section>
     </section>
 
-    <p class="footer"><strong>Privacidad:</strong> esta app no tiene backend, no envía archivos y no usa librerías externas. Ideal para GitHub Pages.</p>
+    <p class="footer"><strong>JSON Studio Pro 404 · v2.0.0</strong> — <strong>Privacidad:</strong> esta app no tiene backend, no envía archivos y no usa librerías externas. Ideal para GitHub Pages.</p>
   </main>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -514,11 +521,13 @@
       duplicates: [],
       interpretation: null,
       tableData: null,
-      search: ''
+      search: '',
+      lastQuery: '',
+      treeExpandCounts: {}
     };
 
     const $ = (id) => document.getElementById(id);
-    const panels = ['resumen', 'arbol', 'codigo', 'tabla', 'auditoria', 'convertir', 'plantillas', 'comparar'];
+    const panels = ['resumen', 'arbol', 'consulta', 'codigo', 'generar', 'tabla', 'auditoria', 'convertir', 'plantillas', 'comparar'];
 
     const demo = JSON.stringify({
       project: 'JSON Studio Pro 404',
@@ -652,6 +661,73 @@
       }
     ];
 
+    const RECENT_FILES_KEY = 'json-studio-recent-files';
+    const RECENT_FILES_MAX = 8;
+    const RECENT_FILES_MAX_BYTES = 250000; // no se guarda el contenido de archivos más grandes, solo metadatos
+
+    function getRecentFiles() {
+      try { return JSON.parse(localStorage.getItem(RECENT_FILES_KEY) || '[]'); }
+      catch { return []; }
+    }
+
+    function saveRecentFile(name, raw) {
+      try {
+        let list = getRecentFiles().filter(f => f.name !== name);
+        const entry = { name, size: raw.length, savedAt: Date.now(), content: raw.length <= RECENT_FILES_MAX_BYTES ? raw : null };
+        list.unshift(entry);
+        list = list.slice(0, RECENT_FILES_MAX);
+        localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(list));
+      } catch {
+        // localStorage lleno o no disponible: se ignora silenciosamente, no es crítico
+      }
+      renderRecentFiles();
+    }
+
+    function relativeTime(ts) {
+      const diff = Math.max(0, Date.now() - ts);
+      const mins = Math.round(diff / 60000);
+      if (mins < 1) return 'ahora mismo';
+      if (mins < 60) return `hace ${mins} min`;
+      const hours = Math.round(mins / 60);
+      if (hours < 24) return `hace ${hours} h`;
+      return `hace ${Math.round(hours / 24)} d`;
+    }
+
+    function renderRecentFiles() {
+      const container = $('recentFiles');
+      if (!container) return;
+      const list = getRecentFiles();
+      if (!list.length) { container.innerHTML = ''; return; }
+      container.innerHTML = `
+        <div class="section-title" style="margin-bottom:6px;">Recientes (local)</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${list.map((f, idx) => `
+            <div class="row" style="justify-content:space-between;gap:6px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2);">
+              <button data-load-recent="${idx}" ${f.content ? '' : 'disabled title="Archivo grande: solo se guardó el nombre, vuelve a cargarlo manualmente"'} style="background:none;border:none;color:var(--text);text-align:left;flex:1;cursor:${f.content ? 'pointer' : 'not-allowed'};opacity:${f.content ? '1' : '.55'};font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                ${escapeHtml(f.name)} <span style="color:var(--muted);font-size:11px;">· ${formatBytes(f.size)} · ${relativeTime(f.savedAt)}</span>
+              </button>
+              <button data-remove-recent="${idx}" class="btn ghost" style="padding:4px 8px;" aria-label="Quitar de recientes">✕</button>
+            </div>
+          `).join('')}
+        </div>`;
+      container.querySelectorAll('[data-load-recent]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const f = list[Number(btn.dataset.loadRecent)];
+          if (!f || !f.content) return;
+          state.fileName = f.name;
+          $('jsonInput').value = f.content;
+          analyze();
+        });
+      });
+      container.querySelectorAll('[data-remove-recent]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const next = getRecentFiles().filter((_, i) => i !== Number(btn.dataset.removeRecent));
+          localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(next));
+          renderRecentFiles();
+        });
+      });
+    }
+
     function showToast(message) {
       const toast = $('toast');
       toast.textContent = message;
@@ -719,10 +795,12 @@
         state.audit = auditJson(state.data);
         state.interpretation = interpretJson(state.data, state.stats, state.audit);
         state.tableData = findTableData(state.data);
+        state.treeExpandCounts = {};
         renderAll();
         $('emptyState').style.display = 'none';
         $('parseStatus').innerHTML = `<div class="chip ok">JSON válido · ${escapeHtml(state.interpretation.type)}</div>`;
         showToast('JSON analizado correctamente');
+        saveRecentFile(state.fileName, raw);
       } catch (err) {
         setError(explainJsonError(raw, err));
       }
@@ -978,7 +1056,9 @@
       renderQuickMetrics(state.stats);
       renderResumen();
       renderTree();
+      renderConsulta();
       renderCode();
+      renderGenerar();
       renderTable();
       renderAudit();
       renderConvert();
@@ -1053,6 +1133,14 @@
 
     function renderTree() {
       $('panel-arbol').innerHTML = `<div class="tree">${renderNode(state.data, '$', 0)}</div>`;
+      $('panel-arbol').querySelectorAll('[data-expand-path]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const p = btn.dataset.expandPath;
+          state.treeExpandCounts[p] = (state.treeExpandCounts[p] || 0) + 500;
+          renderTree();
+        });
+      });
     }
 
     function renderNode(node, path, depth) {
@@ -1061,18 +1149,22 @@
       const mark = matches ? ' style="background:rgba(250,204,21,.18);border-radius:6px;padding:1px 3px"' : '';
       if (Array.isArray(node)) {
         const preview = `Array(${node.length})`;
-        const limit = depth <= 1 ? 250 : 80;
+        const baseLimit = depth <= 1 ? 250 : 80;
+        const limit = baseLimit + (state.treeExpandCounts[path] || 0);
         const items = node.slice(0, limit).map((item, idx) => `<div><span class="key">[${idx}]</span>: ${renderNode(item, `${path}[${idx}]`, depth + 1)}</div>`).join('');
-        const more = node.length > limit ? `<div class="path-pill">… ${node.length - limit} elementos más omitidos en la vista para mantener rendimiento</div>` : '';
+        const remaining = node.length - limit;
+        const more = remaining > 0 ? `<div class="path-pill"><a href="#" data-expand-path="${escapeHtml(path)}" style="color:var(--accent);text-decoration:underline;">Cargar ${Math.min(500, remaining)} más</a> — ${remaining} elemento(s) restantes (omitidos para mantener el rendimiento)</div>` : '';
         return `<details ${depth < 3 ? 'open' : ''}><summary${mark}>${preview}<span class="path-pill">${escapeHtml(path)}</span></summary>${items}${more}</details>`;
       }
       if (node && typeof node === 'object') {
         const keys = Object.keys(node);
         const preview = `Object(${keys.length})`;
-        const limit = depth <= 1 ? 500 : 120;
+        const baseLimit = depth <= 1 ? 500 : 120;
+        const limit = baseLimit + (state.treeExpandCounts[path] || 0);
         const visibleKeys = keys.slice(0, limit);
         const body = visibleKeys.map(key => `<div><span class="key">${escapeHtml(key)}</span>: ${renderNode(node[key], `${path}.${key}`, depth + 1)}</div>`).join('');
-        const more = keys.length > limit ? `<div class="path-pill">… ${keys.length - limit} claves más omitidas en la vista para mantener rendimiento</div>` : '';
+        const remaining = keys.length - limit;
+        const more = remaining > 0 ? `<div class="path-pill"><a href="#" data-expand-path="${escapeHtml(path)}" style="color:var(--accent);text-decoration:underline;">Cargar ${Math.min(500, remaining)} más</a> — ${remaining} clave(s) restantes (omitidas para mantener el rendimiento)</div>` : '';
         return `<details ${depth < 3 ? 'open' : ''}><summary${mark}>${preview}<span class="path-pill">${escapeHtml(path)}</span></summary>${body}${more}</details>`;
       }
       return `<span${mark} class="${valueClass(node)}">${escapeHtml(valuePreview(node))}</span>`;
@@ -1264,6 +1356,162 @@
       }
     }
 
+    // ---- Generador de código (TypeScript / Python / fetch) ----
+    function toPascalCase(str) {
+      return String(str).replace(/[^a-zA-Z0-9]+(.)?/g, (_, c) => (c ? c.toUpperCase() : '')).replace(/^./, c => c.toUpperCase()) || 'Item';
+    }
+
+    function tsTypeOf(value) {
+      if (value === null) return 'null';
+      if (Array.isArray(value)) {
+        if (!value.length) return 'unknown[]';
+        const itemTypes = [...new Set(value.slice(0, 25).map(v => (v && typeof v === 'object') ? '__obj__' : typeof v))];
+        if (itemTypes.length === 1 && itemTypes[0] === '__obj__') return null; // handled by caller (named interface)
+        if (itemTypes.length === 1) return `${itemTypes[0]}[]`;
+        return 'unknown[]';
+      }
+      if (typeof value === 'object') return null; // named interface
+      return typeof value;
+    }
+
+    function generateTsInterfaces(value, name, out, seen) {
+      if (value === null || typeof value !== 'object') return tsTypeOf(value);
+      if (Array.isArray(value)) {
+        const sample = value.find(v => v && typeof v === 'object' && !Array.isArray(v));
+        if (sample) {
+          const itemName = toPascalCase(name) + 'Item';
+          generateTsInterfaces(sample, itemName, out, seen);
+          return `${itemName}[]`;
+        }
+        const t = tsTypeOf(value);
+        return t || 'unknown[]';
+      }
+      const ifaceName = toPascalCase(name);
+      if (seen.has(ifaceName)) return ifaceName;
+      seen.add(ifaceName);
+      const lines = [];
+      Object.keys(value).forEach(key => {
+        const v = value[key];
+        const safeKey = /^[A-Za-z_$][\w$]*$/.test(key) ? key : `"${key}"`;
+        const optional = v === null ? '?' : '';
+        let type;
+        if (v === null) type = 'unknown | null';
+        else if (Array.isArray(v)) type = generateTsInterfaces(v, key, out, seen);
+        else if (typeof v === 'object') type = generateTsInterfaces(v, key, out, seen);
+        else type = typeof v;
+        lines.push(`  ${safeKey}${optional}: ${type};`);
+      });
+      out.push(`interface ${ifaceName} {\n${lines.join('\n')}\n}`);
+      return ifaceName;
+    }
+
+    function generatePythonDataclass(value, name, out, seen) {
+      if (value === null || typeof value !== 'object') return null;
+      if (Array.isArray(value)) {
+        const sample = value.find(v => v && typeof v === 'object' && !Array.isArray(v));
+        if (sample) {
+          const itemName = toPascalCase(name.replace(/s$/, ''));
+          generatePythonDataclass(sample, itemName, out, seen);
+          return `List[${itemName}]`;
+        }
+        return 'List[Any]';
+      }
+      const clsName = toPascalCase(name);
+      if (seen.has(clsName)) return clsName;
+      seen.add(clsName);
+      const lines = [];
+      Object.keys(value).forEach(key => {
+        const v = value[key];
+        const safeKey = /^[A-Za-z_]\w*$/.test(key) ? key : `field_${lines.length}`;
+        let type;
+        if (v === null) type = 'Optional[Any]';
+        else if (Array.isArray(v)) type = generatePythonDataclass(v, key, out, seen) || 'List[Any]';
+        else if (typeof v === 'object') type = generatePythonDataclass(v, key, out, seen);
+        else if (typeof v === 'number') type = Number.isInteger(v) ? 'int' : 'float';
+        else if (typeof v === 'boolean') type = 'bool';
+        else if (typeof v === 'string') type = 'str';
+        else type = 'Any';
+        lines.push(`    ${safeKey}: ${type}`);
+      });
+      out.push(`@dataclass\nclass ${clsName}:\n${lines.join('\n')}`);
+      return clsName;
+    }
+
+    function generateFetchSnippet(value, urlHint) {
+      const isArray = Array.isArray(value);
+      const sample = isArray ? value[0] : value;
+      const keys = sample && typeof sample === 'object' ? Object.keys(sample).slice(0, 6) : [];
+      const destructure = keys.length ? `const { ${keys.join(', ')} } = ${isArray ? 'data[0]' : 'data'};` : '// estructura no es un objeto plano';
+      return `async function loadData() {
+  const response = await fetch('${urlHint}');
+  if (!response.ok) throw new Error('Error HTTP ' + response.status);
+  const data = await response.json();
+  ${destructure}
+  return data;
+}`;
+    }
+
+    function renderGenerar() {
+      if (!state.data) {
+        $('panel-generar').innerHTML = `<div class="empty"><div><strong>Sin datos</strong>Carga un JSON para generar interfaces, dataclasses o un snippet fetch.</div></div>`;
+        return;
+      }
+      const rootName = (fileBaseName() || 'root').replace(/[^a-zA-Z0-9]/g, ' ').trim() || 'root';
+
+      const tsOut = [];
+      const tsSeen = new Set();
+      let tsRootType;
+      try { tsRootType = generateTsInterfaces(state.data, rootName, tsOut, tsSeen); }
+      catch { tsRootType = 'unknown'; }
+      const tsCode = Array.isArray(state.data)
+        ? `${tsOut.join('\n\n')}\n\ntype ${toPascalCase(rootName)}List = ${tsRootType};`
+        : `${tsOut.join('\n\n')}`;
+
+      const pyOut = [];
+      const pySeen = new Set();
+      try { generatePythonDataclass(Array.isArray(state.data) ? state.data[0] : state.data, rootName, pyOut, pySeen); }
+      catch { /* noop */ }
+      const pyCode = `from dataclasses import dataclass\nfrom typing import Any, List, Optional\n\n${pyOut.join('\n\n')}`;
+
+      const fetchCode = generateFetchSnippet(state.data, 'https://tu-api.example.com/endpoint');
+
+      const blocks = [
+        { id: 'ts', label: 'Interfaz TypeScript', lang: 'typescript', code: tsCode || '// No se detectaron objetos anidados' },
+        { id: 'py', label: 'Dataclass Python', lang: 'python', code: pyOut.length ? pyCode : '# El JSON raíz no es un objeto; no se generó dataclass' },
+        { id: 'fetch', label: 'Snippet fetch (JS)', lang: 'javascript', code: fetchCode }
+      ];
+
+      $('panel-generar').innerHTML = `
+        <div class="insight">
+          <strong>Generador de código</strong>
+          Tipos e interfaces inferidos automáticamente a partir de la estructura y valores del JSON cargado. Revisa y ajusta antes de usar en producción.
+        </div>
+        <div class="template-grid" style="margin-top:14px;">
+          ${blocks.map(b => `
+            <div class="convert-card">
+              <div class="row" style="justify-content:space-between;margin-bottom:8px;">
+                <strong>${b.label}</strong>
+                <div class="row" style="gap:6px;">
+                  <button class="btn" data-copy-gen="${b.id}">Copiar</button>
+                  <button class="btn" data-download-gen="${b.id}">Descargar</button>
+                </div>
+              </div>
+              <pre class="codebox" style="max-height:320px;">${escapeHtml(b.code)}</pre>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      blocks.forEach(b => {
+        const copyBtn = document.querySelector(`[data-copy-gen="${b.id}"]`);
+        const downloadBtn = document.querySelector(`[data-download-gen="${b.id}"]`);
+        if (copyBtn) copyBtn.addEventListener('click', () => copyText(b.code));
+        if (downloadBtn) {
+          const ext = b.id === 'ts' ? 'ts' : b.id === 'py' ? 'py' : 'js';
+          downloadBtn.addEventListener('click', () => downloadText(b.code, `${fileBaseName()}-generado.${ext}`, 'text/plain'));
+        }
+      });
+    }
+
     function inferSchema(value, depth = 0) {
       const type = Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value;
       if (depth > 8) return { description: 'Profundidad omitida por seguridad de vista' };
@@ -1302,6 +1550,204 @@
       }
       if (first.type === 'array') return { type: 'array', items: mergeSchemas(schemas.map(s => s.items || {})) };
       return first;
+    }
+
+    // ---- Motor de consulta (subconjunto de JMESPath) ----
+    // Soporta: a.b.c | a[0] | a[-1] | a[*] | a.* | a[0:3] | a[?campo==valor] | encadenado a[*].b[?x>`10`].y
+    function tokenizeQuery(expr) {
+      const tokens = [];
+      let i = 0;
+      while (i < expr.length) {
+        const ch = expr[i];
+        if (ch === '.') { tokens.push({ t: 'dot' }); i++; continue; }
+        if (ch === '[') {
+          const close = findMatchingBracket(expr, i);
+          if (close === -1) throw new Error('Corchete sin cerrar en la posición ' + i);
+          tokens.push({ t: 'bracket', body: expr.slice(i + 1, close) });
+          i = close + 1;
+          continue;
+        }
+        if (/\s/.test(ch)) { i++; continue; }
+        let j = i;
+        while (j < expr.length && !/[.\[\s]/.test(expr[j])) j++;
+        if (j === i) throw new Error('Carácter inesperado "' + ch + '" en la posición ' + i);
+        tokens.push({ t: 'ident', name: expr.slice(i, j) });
+        i = j;
+      }
+      return tokens;
+    }
+
+    function findMatchingBracket(str, openIndex) {
+      let depth = 0;
+      let inString = false, stringChar = null, escape = false;
+      for (let i = openIndex; i < str.length; i++) {
+        const ch = str[i];
+        if (inString) {
+          if (escape) escape = false;
+          else if (ch === '\\') escape = true;
+          else if (ch === stringChar) inString = false;
+          continue;
+        }
+        if (ch === '"' || ch === "'") { inString = true; stringChar = ch; continue; }
+        if (ch === '[') depth++;
+        else if (ch === ']') { depth--; if (depth === 0) return i; }
+      }
+      return -1;
+    }
+
+    function parseQueryLiteral(raw) {
+      const s = raw.trim();
+      if (/^`.*`$/.test(s)) {
+        const inner = s.slice(1, -1);
+        try { return JSON.parse(inner); } catch { return inner; }
+      }
+      if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
+      if (s === 'true') return true;
+      if (s === 'false') return false;
+      if (s === 'null') return null;
+      if (/^"(.*)"$/.test(s) || /^'(.*)'$/.test(s)) return s.slice(1, -1);
+      return s;
+    }
+
+    function applyFilter(arr, filterExpr) {
+      const m = filterExpr.match(/^(.*?)(==|!=|>=|<=|>|<)(.*)$/);
+      if (!m) throw new Error('Filtro no soportado: [?' + filterExpr + ']. Usa ==, !=, >, <, >=, <=');
+      const [, leftRaw, op, rightRaw] = m;
+      const leftPath = leftRaw.trim();
+      const rightVal = parseQueryLiteral(rightRaw);
+      return arr.filter(item => {
+        const leftVal = leftPath === '@' ? item : runQuery(item, leftPath, true);
+        switch (op) {
+          case '==': return leftVal == rightVal;
+          case '!=': return leftVal != rightVal;
+          case '>': return Number(leftVal) > Number(rightVal);
+          case '<': return Number(leftVal) < Number(rightVal);
+          case '>=': return Number(leftVal) >= Number(rightVal);
+          case '<=': return Number(leftVal) <= Number(rightVal);
+          default: return false;
+        }
+      });
+    }
+
+    function runQuery(data, expr, silent = false) {
+      const clean = expr.trim().replace(/^\$\.?/, '');
+      if (!clean) return data;
+      let tokens;
+      try { tokens = tokenizeQuery(clean); }
+      catch (e) { if (silent) return undefined; throw e; }
+
+      let current = data;
+      let projected = false;
+      for (const tok of tokens) {
+        if (current === undefined || current === null) return undefined;
+        if (tok.t === 'dot') continue;
+        if (tok.t === 'ident') {
+          if (tok.name === '*') {
+            current = Array.isArray(current) ? current : (current && typeof current === 'object' ? Object.values(current) : undefined);
+            projected = true;
+            continue;
+          }
+          if (projected) {
+            current = Array.isArray(current) ? current.map(item => (item && typeof item === 'object') ? item[tok.name] : undefined) : undefined;
+          } else {
+            current = current && typeof current === 'object' ? current[tok.name] : undefined;
+          }
+          continue;
+        }
+        if (tok.t === 'bracket') {
+          const body = tok.body.trim();
+          if (body === '*') {
+            current = Array.isArray(current) ? current : (current && typeof current === 'object' ? Object.values(current) : undefined);
+            projected = true;
+            continue;
+          }
+          if (body.startsWith('?')) {
+            if (!Array.isArray(current)) { current = undefined; continue; }
+            current = applyFilter(current, body.slice(1).trim());
+            projected = true;
+            continue;
+          }
+          if (body.includes(':')) {
+            const [a, b] = body.split(':').map(s => s.trim());
+            if (!Array.isArray(current)) { current = undefined; continue; }
+            const start = a === '' ? 0 : Number(a);
+            const end = b === '' ? current.length : Number(b);
+            current = current.slice(start, end);
+            projected = true;
+            continue;
+          }
+          if (/^-?\d+$/.test(body)) {
+            if (projected) {
+              const idx = Number(body);
+              current = Array.isArray(current) ? current.map(item => Array.isArray(item) ? item[idx < 0 ? item.length + idx : idx] : undefined) : undefined;
+              continue;
+            }
+            if (!Array.isArray(current)) { current = undefined; continue; }
+            const idx = Number(body) < 0 ? current.length + Number(body) : Number(body);
+            current = current[idx];
+            continue;
+          }
+          // quoted key access like ["some key"]
+          const keyMatch = body.match(/^"(.*)"$|^'(.*)'$/);
+          if (keyMatch) {
+            const key = keyMatch[1] ?? keyMatch[2];
+            current = projected
+              ? (Array.isArray(current) ? current.map(item => (item && typeof item === 'object') ? item[key] : undefined) : undefined)
+              : (current && typeof current === 'object' ? current[key] : undefined);
+            continue;
+          }
+          current = undefined;
+        }
+      }
+      return current;
+    }
+
+    function renderConsulta() {
+      const examples = ['*', 'catalog[*].sku', 'items[?price>`50`]', 'usuarios[0].email', 'data[*].id'];
+      $('panel-consulta').innerHTML = `
+        <div class="insight">
+          <strong>Consulta (subconjunto de JMESPath)</strong>
+          Escribe una ruta de consulta para extraer o filtrar datos sin escribir código. Soporta rutas, índices, comodines <code>[*]</code> y filtros <code>[?campo&gt;valor]</code>.
+        </div>
+        <div class="row" style="margin:12px 0;gap:8px;flex-wrap:wrap;">
+          <input id="queryInput" type="text" placeholder="ej: items[?price>\`50\`].name" style="flex:1;min-width:240px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-family:var(--mono);" value="${escapeHtml(state.lastQuery || '')}" />
+          <button class="btn primary" id="runQueryBtn">Ejecutar</button>
+          <button class="btn" id="copyQueryResultBtn">Copiar resultado</button>
+          <button class="btn" id="downloadQueryResultBtn">Descargar JSON</button>
+        </div>
+        <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+          ${examples.map(ex => `<button class="btn ghost" data-query-example="${escapeHtml(ex)}" style="font-family:var(--mono);font-size:12px;">${escapeHtml(ex)}</button>`).join('')}
+        </div>
+        <div id="queryStatus"></div>
+        <pre class="codebox" id="queryResult" style="margin-top:10px;"></pre>
+      `;
+      const input = $('queryInput');
+      const status = $('queryStatus');
+      const resultBox = $('queryResult');
+
+      const execute = () => {
+        const expr = input.value.trim();
+        state.lastQuery = expr;
+        if (!expr) { status.innerHTML = ''; resultBox.textContent = ''; return; }
+        try {
+          const result = runQuery(state.data, expr);
+          status.innerHTML = `<div class="insight" style="border-color:var(--ok);"><strong>Consulta válida</strong>Resultado: ${Array.isArray(result) ? result.length + ' elemento(s)' : (result === undefined ? 'sin coincidencias (undefined)' : typeof result)}</div>`;
+          resultBox.textContent = result === undefined ? 'undefined (sin coincidencias)' : JSON.stringify(result, null, 2);
+        } catch (e) {
+          status.innerHTML = `<div class="insight" style="border-color:var(--danger);"><strong>Error de sintaxis</strong>${escapeHtml(e.message)}</div>`;
+          resultBox.textContent = '';
+        }
+      };
+
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') execute(); });
+      $('runQueryBtn').addEventListener('click', execute);
+      document.querySelectorAll('[data-query-example]').forEach(btn => {
+        btn.addEventListener('click', () => { input.value = btn.dataset.queryExample; execute(); });
+      });
+      $('copyQueryResultBtn').addEventListener('click', () => copyText(resultBox.textContent || ''));
+      $('downloadQueryResultBtn').addEventListener('click', () => downloadText(resultBox.textContent || 'null', `consulta-${fileBaseName()}.json`, 'application/json'));
+
+      if (state.lastQuery) execute();
     }
 
     function listJsonPaths(value) {
@@ -1384,14 +1830,114 @@
       return value;
     }
 
+    function extractBalancedJson(text) {
+      const startMatch = text.search(/[[{]/);
+      if (startMatch === -1) return null;
+      const stack = [];
+      let inString = false, escape = false, stringChar = null;
+      for (let i = startMatch; i < text.length; i++) {
+        const ch = text[i];
+        if (inString) {
+          if (escape) escape = false;
+          else if (ch === '\\') escape = true;
+          else if (ch === stringChar) inString = false;
+          continue;
+        }
+        if (ch === '"' || ch === "'") { inString = true; stringChar = ch; continue; }
+        if (ch === '{' || ch === '[') stack.push(ch);
+        else if (ch === '}' || ch === ']') {
+          stack.pop();
+          if (stack.length === 0) return text.slice(startMatch, i + 1);
+        }
+      }
+      return null;
+    }
+
+    function stripJsonComments(text) {
+      let out = '';
+      let inString = false, escape = false, stringChar = null;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const next = text[i + 1];
+        if (inString) {
+          out += ch;
+          if (escape) escape = false;
+          else if (ch === '\\') escape = true;
+          else if (ch === stringChar) inString = false;
+          continue;
+        }
+        if (ch === '"' || ch === "'") { inString = true; stringChar = ch; out += ch; continue; }
+        if (ch === '/' && next === '/') {
+          while (i < text.length && text[i] !== '\n') i++;
+          out += '\n';
+          continue;
+        }
+        if (ch === '/' && next === '*') {
+          i += 2;
+          while (i < text.length && !(text[i] === '*' && text[i + 1] === '/')) i++;
+          i++;
+          continue;
+        }
+        out += ch;
+      }
+      return out;
+    }
+
     function repairJsonBasic(raw) {
-      let repaired = raw.trim();
-      repaired = repaired.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-      repaired = repaired.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
-      repaired = repaired.replace(/,\s*([}\]])/g, '$1');
-      repaired = repaired.replace(/([{,]\s*)([A-Za-z_$][\w$-]*)(\s*:)/g, '$1"$2"$3');
-      repaired = repaired.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_, inner) => '"' + inner.replace(/"/g, '\\"') + '"');
-      return repaired;
+      return repairJsonAggressive(raw).text;
+    }
+
+    // Reparación agresiva con informe de cambios aplicados. No garantiza éxito con JSON gravemente roto.
+    function repairJsonAggressive(raw) {
+      const changes = [];
+      let text = raw;
+
+      const fenced = text.replace(/^\s*```(?:json5?|jsonc)?/i, '').replace(/```\s*$/i, '').trim();
+      if (fenced !== text.trim()) { changes.push('Eliminadas vallas de código Markdown (```)'); text = fenced; }
+
+      const withoutComments = stripJsonComments(text);
+      if (withoutComments !== text) { changes.push('Eliminados comentarios estilo JavaScript (// y /* */)'); text = withoutComments; }
+
+      const quotesNormalized = text.replace(/[\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'");
+      if (quotesNormalized !== text) { changes.push('Normalizadas comillas tipográficas a comillas rectas'); text = quotesNormalized; }
+
+      const pyLiterals = text.replace(/\bTrue\b/g, 'true').replace(/\bFalse\b/g, 'false').replace(/\bNone\b/g, 'null');
+      if (pyLiterals !== text) { changes.push('Convertidos literales de Python (True/False/None) a JSON'); text = pyLiterals; }
+
+      const noSpecials = text.replace(/\bNaN\b/g, 'null').replace(/-?\bInfinity\b/g, 'null');
+      if (noSpecials !== text) { changes.push('Sustituidos NaN/Infinity por null (no son JSON válido)'); text = noSpecials; }
+
+      const noTrailingCommas = text.replace(/,(\s*[}\]])/g, '$1');
+      if (noTrailingCommas !== text) { changes.push('Eliminadas comas finales antes de } o ]'); text = noTrailingCommas; }
+
+      const quotedKeys = text.replace(/([{,]\s*)([A-Za-z_$][\w$-]*)(\s*:)/g, '$1"$2"$3');
+      if (quotedKeys !== text) { changes.push('Añadidas comillas a claves sin comillas'); text = quotedKeys; }
+
+      const doubleQuoted = text.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_, inner) => '"' + inner.replace(/"/g, '\\"') + '"');
+      if (doubleQuoted !== text) { changes.push('Convertidas comillas simples a comillas dobles'); text = doubleQuoted; }
+
+      // Si tras las limpiezas el texto no parece JSON puro, o hay contenido sobrante,
+      // intenta extraer el primer bloque balanceado (útil para JSON pegado dentro de logs o texto).
+      let stillValid = false;
+      try { JSON.parse(text); stillValid = true; } catch { stillValid = false; }
+      if (!stillValid) {
+        const extracted = extractBalancedJson(text);
+        if (extracted && extracted.trim() !== text.trim()) {
+          try {
+            JSON.parse(extracted);
+            changes.push('Extraído bloque JSON válido ignorando texto circundante (logs, prefijos, etc.)');
+            text = extracted;
+          } catch { /* el bloque extraído tampoco es válido, se deja como está */ }
+        }
+      } else {
+        const balanced = extractBalancedJson(text);
+        if (balanced && balanced.trim().length < text.trim().length) {
+          changes.push('Eliminado contenido sobrante después del bloque JSON válido');
+          text = balanced;
+        }
+      }
+
+      return { text, changes };
     }
 
     function sanitizeJson(value, currentKey = '') {
@@ -1419,10 +1965,14 @@
       $('panel-comparar').innerHTML = `
         <div class="insight">
           <h3>Comparar con otro JSON</h3>
-          <p>Pega un segundo JSON para detectar diferencias básicas de claves, tipos y estructura superior.</p>
+          <p>Pega un segundo JSON para detectar diferencias básicas de claves, tipos y estructura superior, y genera un JSON Patch (RFC 6902) aplicable.</p>
         </div>
         <textarea id="compareInput" placeholder="Pega aquí el segundo JSON" spellcheck="false"></textarea>
-        <div class="row" style="margin-top:10px"><button class="btn primary" id="compareBtn">Comparar</button></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" id="compareBtn">Comparar</button>
+          <button class="btn" id="downloadPatchBtn" style="display:none;">Descargar JSON Patch</button>
+          <button class="btn" id="copyPatchBtn" style="display:none;">Copiar JSON Patch</button>
+        </div>
         <div id="compareResult" style="margin-top:12px"></div>`;
       $('compareBtn').addEventListener('click', compareJsons);
     }
@@ -1430,14 +1980,68 @@
     function compareJsons() {
       const raw = $('compareInput').value.trim();
       const target = $('compareResult');
+      const downloadPatchBtn = $('downloadPatchBtn');
+      const copyPatchBtn = $('copyPatchBtn');
+      downloadPatchBtn.style.display = 'none';
+      copyPatchBtn.style.display = 'none';
       if (!raw) { target.innerHTML = `<div class="error-box">Pega un segundo JSON para comparar.</div>`; return; }
       try {
         const other = JSON.parse(raw);
         const diffs = diffSummary(state.data, other);
-        target.innerHTML = `<div class="insight"><h3>Resultado</h3>${diffs.length ? `<ul>${diffs.map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul>` : '<p>No se han detectado diferencias estructurales básicas.</p>'}</div>`;
+        const patch = generateJsonPatch(state.data, other);
+        const patchText = JSON.stringify(patch, null, 2);
+        target.innerHTML = `
+          <div class="insight"><h3>Resultado</h3>${diffs.length ? `<ul>${diffs.map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul>` : '<p>No se han detectado diferencias estructurales básicas.</p>'}</div>
+          <div class="insight" style="margin-top:12px;"><h3>JSON Patch (RFC 6902) — ${patch.length} operación(es)</h3>
+            <p>Operaciones necesarias para transformar el primer JSON en el segundo. Aplicable con cualquier librería compatible con RFC 6902.</p>
+            <pre class="codebox" style="max-height:280px;">${escapeHtml(patchText)}</pre>
+          </div>`;
+        if (patch.length) {
+          downloadPatchBtn.style.display = '';
+          copyPatchBtn.style.display = '';
+          downloadPatchBtn.onclick = () => downloadText(patchText, `${fileBaseName()}-patch.json`, 'application/json');
+          copyPatchBtn.onclick = () => copyText(patchText);
+        }
       } catch (e) {
         target.innerHTML = `<div class="error-box">Segundo JSON no válido: ${escapeHtml(explainJsonError(raw, e))}</div>`;
       }
+    }
+
+    function escapeJsonPointer(token) {
+      return String(token).replace(/~/g, '~0').replace(/\//g, '~1');
+    }
+
+    // Genera un JSON Patch (RFC 6902) mínimo que transforma `a` en `b`.
+    function generateJsonPatch(a, b, basePath = '') {
+      const ops = [];
+      const typeOf = x => Array.isArray(x) ? 'array' : x === null ? 'null' : typeof x;
+      const ta = typeOf(a), tb = typeOf(b);
+
+      if (ta !== tb) {
+        ops.push({ op: 'replace', path: basePath || '', value: b });
+        return ops;
+      }
+      if (ta === 'object') {
+        const ka = Object.keys(a), kb = Object.keys(b);
+        ka.filter(k => !kb.includes(k)).forEach(k => ops.push({ op: 'remove', path: `${basePath}/${escapeJsonPointer(k)}` }));
+        kb.filter(k => !ka.includes(k)).forEach(k => ops.push({ op: 'add', path: `${basePath}/${escapeJsonPointer(k)}`, value: b[k] }));
+        ka.filter(k => kb.includes(k)).forEach(k => {
+          ops.push(...generateJsonPatch(a[k], b[k], `${basePath}/${escapeJsonPointer(k)}`));
+        });
+        return ops;
+      }
+      if (ta === 'array') {
+        const minLen = Math.min(a.length, b.length);
+        for (let i = 0; i < minLen; i++) ops.push(...generateJsonPatch(a[i], b[i], `${basePath}/${i}`));
+        if (a.length > b.length) {
+          for (let i = a.length - 1; i >= b.length; i--) ops.push({ op: 'remove', path: `${basePath}/${i}` });
+        } else if (b.length > a.length) {
+          for (let i = a.length; i < b.length; i++) ops.push({ op: 'add', path: `${basePath}/${i}`, value: b[i] });
+        }
+        return ops;
+      }
+      if (a !== b) ops.push({ op: 'replace', path: basePath || '', value: b });
+      return ops;
     }
 
     function diffSummary(a, b) {
@@ -1617,9 +2221,16 @@
       });
       $('repairBtn').addEventListener('click', () => {
         const before = $('jsonInput').value;
-        $('jsonInput').value = repairJsonBasic(before);
-        try { JSON.parse($('jsonInput').value); analyze(); showToast('Reparación básica aplicada'); }
-        catch (e) { setError('He aplicado una reparación básica, pero el JSON sigue necesitando revisión manual. ' + explainJsonError($('jsonInput').value, e)); }
+        const { text, changes } = repairJsonAggressive(before);
+        $('jsonInput').value = text;
+        const reportEl = $('repairReport');
+        if (!changes.length) {
+          reportEl.innerHTML = `<div class="insight" style="margin-top:10px;"><strong>Sin cambios</strong>No se ha detectado nada que reparar automáticamente.</div>`;
+        } else {
+          reportEl.innerHTML = `<div class="insight" style="margin-top:10px;border-color:var(--accent);"><strong>Cambios aplicados (${changes.length})</strong><ul style="margin:6px 0 0 18px;padding:0;">${changes.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul></div>`;
+        }
+        try { JSON.parse($('jsonInput').value); analyze(); showToast(changes.length ? `Reparado: ${changes.length} cambio(s) aplicados` : 'Nada que reparar'); }
+        catch (e) { setError('He aplicado reparación automática, pero el JSON sigue necesitando revisión manual. ' + explainJsonError($('jsonInput').value, e)); }
       });
       $('sortKeysBtn').addEventListener('click', () => {
         try { $('jsonInput').value = JSON.stringify(sortKeysDeep(JSON.parse($('jsonInput').value)), null, 2); analyze(); showToast('Claves ordenadas'); }
