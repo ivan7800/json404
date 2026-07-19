@@ -162,6 +162,26 @@
     .btn.danger { border-color: color-mix(in oklab, var(--danger) 55%, var(--line)); color: var(--danger); }
     .btn.small { min-height: 34px; padding: 7px 11px; font-size: 13px; }
     .btn.ghost { background: transparent; }
+    .toolbar-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 13px;
+      min-height: 38px;
+      padding: 8px 12px;
+      border-radius: 10px;
+    }
+    .toolbar-action svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .toolbar-action:hover {
+      transform: none;
+      color: var(--text);
+      background: color-mix(in oklab, var(--panel-solid) 55%, transparent);
+      border-color: var(--line);
+    }
     .chip { color: var(--muted); font-size: 13px; padding: 8px 12px; min-height: 34px; }
     .chip strong { color: var(--text); }
     .chip.ok { color: var(--ok); border-color: color-mix(in oklab, var(--ok) 40%, var(--line)); }
@@ -468,8 +488,14 @@
         <div class="main-head">
           <div class="toolbar">
             <input id="searchInput" type="search" placeholder="Buscar clave, valor o ruta…" aria-label="Buscar dentro del JSON" />
-            <button class="btn" id="copyPrettyBtn">Copiar bonito</button>
-            <button class="btn" id="downloadCleanBtn">Descargar limpio</button>
+            <button class="btn toolbar-action" id="copyPrettyBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              Copiar bonito
+            </button>
+            <button class="btn toolbar-action" id="downloadCleanBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+              Descargar limpio
+            </button>
           </div>
           <nav class="tabs" aria-label="Vistas">
             <button class="tab active" data-tab="resumen">Resumen</button>
